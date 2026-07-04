@@ -1,0 +1,8 @@
+node_modules
+digit.db
+digit.db-*
+uploads
+backups
+server.log
+.env
+.git

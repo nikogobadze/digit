@@ -1,0 +1,14 @@
+node_modules/
+digit.db
+digit.db-*
+uploads/*
+!uploads/.gitkeep
+.env
+
+server.log
+
+backups/
+.vercel
+
+.vercel
+.env*
