@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "regions": ["fra1"],
+  "regions": ["hnd1"],
   "builds": [
     { "src": "server.js", "use": "@vercel/node", "config": { "includeFiles": ["public/**"] } },
     { "src": "public/**", "use": "@vercel/static" }
