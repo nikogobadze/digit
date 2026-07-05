@@ -44,26 +44,33 @@ You can also register fresh **client** and **fixer** accounts from the UI.
 Client posts problem (+ photo, + suggested price)
         │  status: submitted
         ▼
-Manager reviews ──approve──▶ open ──fixer accepts──▶ assigned
-        │                                                │ fixer marks done
-        └─counter price──▶ price_countered               ▼
-                              │  client accepts──▶ open   work_done
-                              └  client declines─▶ declined│ client confirms
-                                                           ▼
-                                                       completed
+Manager reviews ──approve──▶ open ──manager assigns a fixer──▶ assigned
+        │            (ready to assign)                            │ fixer marks done
+        └─counter price──▶ price_countered                        ▼
+                              │  client accepts──▶ open          work_done
+                              └  client declines─▶ declined       │ client confirms
+                                                                  ▼
+                                                              completed
 ```
 
-- **Matching** is by a shared taxonomy: the categories a client picks are the
-  same keys a fixer registers as skills, so a fixer only sees jobs they qualify for.
-- **First fixer to accept wins** — the claim is an atomic DB update guarded on
-  `status='open' AND assigned_fixer_id IS NULL`.
+- **The manager hand-picks the fixer.** Tasks never sit in a shared pool for
+  fixers to grab. Once a price is agreed the task is "ready to assign", and a
+  manager — who knows their fixers personally — assigns it to exactly one of them.
+  They can do this in the review step or later from the *Ready to assign* queue.
+- **Skills are a hint, not a gate.** The shared taxonomy (a client's category ==
+  a fixer's skill key) surfaces matching fixers first in the assign picker, but the
+  manager may assign anyone they judge best for the job.
+- A fixer only ever sees the jobs **assigned to them** — there is no browse/accept.
+- If a fixer can't finish, a manager **reassigns** (unassign → back to *ready to
+  assign* → pick a different fixer).
 - The **manager's price explanation** is shown to the client in plain language.
 
 ## Roles & permissions
 
 - **client** — post problems, respond to price suggestions, confirm completion.
-- **fixer** — register qualifications, see/accept matching jobs, mark done.
-- **manager** — review queue, approve or counter prices, see all tasks.
+- **fixer** — register qualifications, work the jobs a manager assigns, mark done.
+- **manager** — review queue, approve or counter prices, and **assign each task to
+  a specific fixer**; can reassign in-progress work.
 - **admin** — everything a manager can do, plus promote/demote
   fixer ⇄ manager ⇄ admin. The first seeded admin is protected and can't be changed.
 

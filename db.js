@@ -8,6 +8,13 @@
 const { createClient } = require('@libsql/client');
 const bcrypt = require('bcryptjs');
 
+// In production (Vercel) the filesystem is read-only, so a local SQLite file
+// can't work — a hosted Turso (libSQL) database is required. Fail clearly rather
+// than crashing cryptically on the first write.
+if (!process.env.DATABASE_URL && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+  throw new Error('DATABASE_URL is not set. In production, create a Turso database (https://turso.tech) and set DATABASE_URL and DATABASE_AUTH_TOKEN. See README → "Deploy to Vercel".');
+}
+
 const url = process.env.DATABASE_URL || 'file:digit.db';
 const authToken = process.env.DATABASE_AUTH_TOKEN || undefined;
 const db = createClient(authToken ? { url, authToken } : { url });
@@ -49,6 +56,8 @@ CREATE TABLE IF NOT EXISTS users (
   hourly_rate   INTEGER,
   work_mode     TEXT,
   avatar        TEXT,
+  availability  TEXT NOT NULL DEFAULT 'available',
+  employment_status TEXT NOT NULL DEFAULT 'active',
   is_primary    INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -141,6 +150,8 @@ async function init() {
     for (const [c, def] of Object.entries(addsT)) if (!t.includes(c)) await db.execute(`ALTER TABLE tasks ADD COLUMN ${c} ${def}`);
     const u = await columns('users');
     if (!u.includes('avatar')) await db.execute(`ALTER TABLE users ADD COLUMN avatar TEXT`);
+    if (!u.includes('availability')) await db.execute(`ALTER TABLE users ADD COLUMN availability TEXT NOT NULL DEFAULT 'available'`);
+    if (!u.includes('employment_status')) await db.execute(`ALTER TABLE users ADD COLUMN employment_status TEXT NOT NULL DEFAULT 'active'`);
   }
   await seed();
 }

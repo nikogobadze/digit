@@ -4,6 +4,17 @@
 ================================================================== */
 const state = { user: null, cats: [], dashTab: null, peopleFilter: 'all' };
 
+/* Fixer availability — must mirror AVAILABILITY in server.js. Only "available"
+   fixers can be assigned new work. */
+const AVAIL = {
+  available: { label: 'Available', dot: '#1F9D6B', assignable: true },
+  busy:      { label: 'Busy',      dot: '#C2410C', assignable: false },
+  away:      { label: 'Away',      dot: '#B8860B', assignable: false },
+  offline:   { label: 'Offline',   dot: '#9AA0AA', assignable: false },
+};
+const AVAIL_ORDER = ['available', 'busy', 'away', 'offline'];
+const availMeta = (v) => AVAIL[v] || AVAIL.available;
+
 /* Cache the logged-in user locally so a reload shows the right navbar instantly
    (no "logged out then in" flash). The JWT itself stays in the httpOnly cookie. */
 function setAuth(user) {
@@ -20,7 +31,7 @@ function readAuthCache() {
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
-const money = (n) => (n || n === 0) ? `$${n}` : '—';
+const money = (n) => (n || n === 0) ? `₾${n}` : '—';
 /* read-only star row for a 1–5 value */
 function starsRO(n) {
   n = Math.round(n || 0); let s = '';
@@ -67,6 +78,9 @@ async function api(path, { method, body, form } = {}) {
   const res = await fetch(path, opts);
   let data = {};
   try { data = await res.json(); } catch {}
+  // A logged-in session that turns invalid (expired, or the account was
+  // dismissed/resigned) — sign out cleanly instead of leaving a stuck screen.
+  if (res.status === 401 && state.user) { setAuth(null); toast('Your session ended. Please log in again.', true); go('login'); }
   if (!res.ok) throw new Error(data.error || 'Something went wrong.');
   return data;
 }
@@ -84,9 +98,9 @@ function closeModal() { $('#modal-bg').classList.remove('show'); }
 $('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
 
 /* ---------- navigation ---------- */
-const VIEWS = ['home','login','registerClient','registerFixer','post','dashboard','about','profile','reviews'];
+const VIEWS = ['home','login','registerClient','registerFixer','post','dashboard','about','profile','reviews','fixers'];
 /* Each view maps to a real URL so the browser's Back/Forward buttons work. */
-const PATHS = { home:'/', login:'/login', registerClient:'/signup', registerFixer:'/join', post:'/post', dashboard:'/dashboard', about:'/about', profile:'/profile', reviews:'/reviews' };
+const PATHS = { home:'/', login:'/login', registerClient:'/signup', registerFixer:'/join', post:'/post', dashboard:'/dashboard', about:'/about', profile:'/profile', reviews:'/reviews', fixers:'/fixers' };
 const VIEW_BY_PATH = Object.fromEntries(Object.entries(PATHS).map(([v, p]) => [p, v]));
 
 function showView(view) {
@@ -106,10 +120,15 @@ function go(view, hash, push = true) {
   }
   if (view === 'dashboard' && !state.user) return go('login', null, push);
   if (view === 'profile' && !state.user) return go('login', null, push);
+  if (view === 'fixers' && !(state.user && ['manager', 'admin'].includes(state.user.role))) {
+    toast('Fixer profiles are for managers and admins.');
+    return go(state.user ? 'dashboard' : 'login', null, push);
+  }
   showView(view);
   if (view === 'dashboard') renderDashboard();
   if (view === 'profile') renderProfile();
   if (view === 'reviews') renderReviews();
+  if (view === 'fixers') renderFixers();
   const url = (PATHS[view] || '/') + (hash ? '#' + hash : '');
   if (push) history.pushState({ view, hash: hash || null }, '', url);
   else history.replaceState({ view, hash: hash || null }, '', url);
@@ -160,55 +179,32 @@ function renderNav() {
 /* ---------- bootstrap taxonomy + chips ---------- */
 async function loadCategories() {
   state.cats = await api('/api/categories');
-  // home category cards
+  // home category cards (decorative discovery — they just open the post form)
   $('#home-cats').innerHTML = state.cats.map(c =>
     `<button class="cat" data-cat="${c.key}" data-pick><span class="cico">${c.emoji}</span>${esc(c.label)}</button>`).join('');
-  // post form chips (single select)
-  $('#cat-chips').innerHTML = state.cats.map(c =>
-    `<span class="chip" data-cat="${c.key}">${c.emoji} ${esc(c.label)}</span>`).join('');
-  // fixer skill chips (multi select)
+  // fixer skill chips (multi select) — fixers still register what they can do
   $('#skill-chips').innerHTML = state.cats.filter(c => c.key !== 'other').map(c =>
     `<span class="chip" data-skill="${c.key}">${c.emoji} ${esc(c.label)}</span>`).join('');
 }
 
-/* home category card → jump to post pre-filled */
+/* home "Common Problems" card → open the post form (problems no longer have a category) */
 document.addEventListener('click', e => {
   const card = e.target.closest('[data-pick]');
   if (!card) return;
-  const key = card.getAttribute('data-cat');
   go('post');
-  if (state.user && state.user.role === 'client') selectCat(key);
 });
-function selectCat(key) {
-  $$('#cat-chips .chip').forEach(ch => ch.classList.toggle('on', ch.getAttribute('data-cat') === key));
-  toggleCustomCat();
-}
-/* Home "describe it yourself" box → jump into the post flow as "Something else". */
+/* Home "describe it yourself" box → jump into the post flow with the text as the title. */
 function homeOther() {
   const v = $('#home-other-input').value.trim();
   go('post');
   if (state.user && state.user.role === 'client') {
-    selectCat('other');
-    $('#custom-cat').value = v;
-    if (v) { $('#custom-cat-wrap').style.display = 'block'; $('#problem-text').focus(); }
+    if (v) { $('#problem-title').value = v; $('#problem-text').focus(); }
     $('#home-other-input').value = '';
   }
 }
 $('#home-other-btn').addEventListener('click', homeOther);
 $('#home-other-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); homeOther(); } });
 
-/* Show the free-text "type your problem" field only when "Something else" is picked. */
-function toggleCustomCat() {
-  const on = $('#cat-chips .chip.on');
-  const show = on && on.getAttribute('data-cat') === 'other';
-  $('#custom-cat-wrap').style.display = show ? 'block' : 'none';
-}
-/* post chip single-select */
-$('#cat-chips').addEventListener('click', e => {
-  const ch = e.target.closest('.chip'); if (!ch) return;
-  $$('#cat-chips .chip').forEach(x => x.classList.remove('on')); ch.classList.add('on');
-  toggleCustomCat();
-});
 /* skill chip multi-select */
 $('#skill-chips').addEventListener('click', e => {
   const ch = e.target.closest('.chip'); if (ch) ch.classList.toggle('on');
@@ -375,9 +371,7 @@ thumbs.addEventListener('click', e => {
 
 function resetPostFlow() {
   postStep(1);
-  $('#problem-title').value = ''; $('#problem-text').value = ''; $('#c-price').value = '';
-  $('#custom-cat').value = ''; $('#custom-cat-wrap').style.display = 'none';
-  $$('#cat-chips .chip').forEach(c => c.classList.remove('on'));
+  $('#problem-title').value = ''; $('#problem-text').value = ''; $('#c-when').selectedIndex = 0;
   postFiles = []; renderThumbs(); fileInput.value = ''; drop.style.display = 'block'; clearErr('post-error');
 }
 function postStep(n) {
@@ -392,11 +386,7 @@ function postStep(n) {
 }
 $$('#view-post [data-next]').forEach(b => b.onclick = async () => {
   const n = +b.getAttribute('data-next');
-  if (n === 2) { // validate step 1
-    const cat = $('#cat-chips .chip.on');
-    if (!cat) { showErr('post-error', 'Pick the type of problem first.'); return; }
-    if (cat.getAttribute('data-cat') === 'other' && !$('#custom-cat').value.trim()) {
-      showErr('post-error', 'Type what kind of problem it is.'); return; }
+  if (n === 2) { // validate step 1 — only a description is required now
     if ($('#problem-text').value.trim().length < 5) { showErr('post-error', 'Please describe the problem.'); return; }
     clearErr('post-error'); postStep(2);
   } else if (n === 3) { await submitTask(b); }
@@ -404,17 +394,11 @@ $$('#view-post [data-next]').forEach(b => b.onclick = async () => {
 $$('#view-post [data-prev]').forEach(b => b.onclick = () => postStep(+b.getAttribute('data-prev')));
 
 async function submitTask(btn) {
-  const priceEl = $('#c-price');
   clearFieldErrs($('#view-post'));
-  if (priceEl.value && +priceEl.value < 10) { fieldErr(priceEl, 'The lowest you can offer is $10.'); return; }
-  const cat = $('#cat-chips .chip.on');
   const fd = new FormData();
-  fd.append('category', cat.getAttribute('data-cat'));
-  if (cat.getAttribute('data-cat') === 'other') fd.append('custom_category', $('#custom-cat').value.trim());
   fd.append('title', $('#problem-title').value);
   fd.append('description', $('#problem-text').value);
-  fd.append('urgency', $('#c-when').value);
-  if ($('#c-price').value) fd.append('proposed_price', $('#c-price').value);
+  fd.append('urgency', $('#c-when').value);   // manager sets the price; no client price
   postFiles.forEach(f => fd.append('photos', f));
   btn.disabled = true;
   try {
@@ -425,38 +409,39 @@ async function submitTask(btn) {
 }
 function buildSummary(t) {
   $('#summary').innerHTML = `
-    <div class="row"><b>Problem</b><span>${esc(t.categoryLabel)}</span></div>
+    <div class="row"><b>Problem</b><span>${esc(t.title)}</span></div>
     <div class="row"><b>Details</b><span>${esc(t.description.slice(0, 90))}${t.description.length > 90 ? '…' : ''}</span></div>
-    <div class="row"><b>Your budget</b><span>${money(t.proposed_price)}</span></div>
-    <div class="row"><b>Timing</b><span>${esc(t.urgency)}</span></div>`;
+    <div class="row"><b>Timing</b><span>${esc(t.urgency)}${t.urgency_fee ? ` (+${money(t.urgency_fee)})` : ' (free)'}</span></div>
+    <div class="row"><b>Price</b><span>A manager will send you an offer</span></div>`;
 }
 
 /* ==================================================================
    DASHBOARDS
 ================================================================== */
 function badge(status) {
-  const labels = { submitted:'In review', price_countered:'Price suggested', open:'Open to fixers',
+  const labels = { submitted:'Awaiting price', price_countered:'Offer to review', client_countered:'Counter sent', open:'Finding a fixer',
     assigned:'In progress', work_done:'Done — confirm?', completed:'Completed',
     declined:'Declined', cancelled:'Cancelled' };
   return `<span class="badge b-${status}">${labels[status] || status}</span>`;
 }
 function eventsHtml(t) {
-  return `<div class="toggle-ev" data-action="toggle-ev">Show activity (${t.events.length})</div>
+  return `<div class="toggle-ev" data-action="toggle-ev">Show timeline (${t.events.length})</div>
     <div class="events">${t.events.map(e =>
-      `<div class="ev"><span class="dot">•</span><span><b>${esc(e.who)}</b> — ${esc(e.text)}</span></div>`).join('')}</div>`;
+      `<div class="ev"><span class="dot">•</span><span class="ev-body"><span class="ev-text"><b>${esc(e.who)}</b> — ${esc(e.text)}</span><span class="ev-time">${fmtDateTime(e.at)}</span></span></div>`).join('')}</div>`;
 }
 function priceBlock(t) {
-  if (t.status === 'price_countered')
-    return `<div><span class="price strike">${money(t.proposed_price)}</span> <span class="price">${money(t.counter_price)}</span></div>`;
+  // Show the agreed price once there is one; negotiation cards render the live
+  // offer in their own markup, and a just-submitted task has no price yet.
   if (t.agreed_price != null) return `<div class="price">${money(t.agreed_price)}</div>`;
-  return `<div class="price">${money(t.proposed_price)}</div>`;
+  return '';
+}
+/* urgency + its surcharge, for meta rows */
+function urgencyMeta(t) {
+  return `<span>${esc(t.urgency || '')}${t.urgency_fee ? ` · +${money(t.urgency_fee)} urgency` : ' · free'}</span>`;
 }
 function cardShell(t, inner) {
   return `<div class="tcard" data-id="${t.id}">
-    <div class="top">
-      <span class="cat" title="${esc(t.categoryLabel)}">${esc(t.categoryLabel)}</span>
-      ${badge(t.status)}
-    </div>
+    <div class="top">${badge(t.status)}</div>
     <h3>${esc(t.title)}</h3>
     <p class="desc">${esc(t.description)}</p>
     ${(t.photos && t.photos.length) ? `<div class="tphotos">${t.photos.map(p => `<img class="tphoto" src="${p}" alt="problem photo">`).join('')}</div>` : ''}
@@ -473,7 +458,7 @@ document.addEventListener('click', async e => {
   try {
     if (action === 'toggle-ev') {
       const ev = card.querySelector('.events'); ev.classList.toggle('show');
-      a.textContent = ev.classList.contains('show') ? 'Hide activity' : `Show activity (${ev.children.length})`;
+      a.textContent = ev.classList.contains('show') ? 'Hide timeline' : `Show timeline (${ev.children.length})`;
       return;
     }
     if (action === 'set-star') { // highlight stars up to the clicked one (UI only)
@@ -488,15 +473,17 @@ document.addEventListener('click', async e => {
       await api(`/api/tasks/${id}/rate`, { body: { rating: val, comment: w.querySelector('.rate-comment').value } });
       toast('Thanks for rating!'); renderDashboard(); return;
     }
-    if (action === 'accept-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'accept' } }); toast('Price accepted — sent to fixers.'); }
+    if (action === 'accept-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'accept' } }); toast('Price accepted — a manager will assign a fixer.'); }
     if (action === 'decline-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'decline' } }); toast('Price declined.'); }
+    if (action === 'client-counter') { return openClientCounter(id); }
+    if (action === 'counter-reply') { return openCounterReply(id); }
     if (action === 'confirm-done') { await api(`/api/tasks/${id}/confirm`, { method:'POST' }); toast('Marked as fixed. Thank you!'); }
-    if (action === 'accept-task') { return confirmAccept(id); }
+    if (action === 'assign') { return openAssign(id); }
     if (action === 'release') { return confirmRelease(id); }
     if (action === 'mark-done') { await api(`/api/tasks/${id}/done`, { method:'POST' }); toast('Marked done. Waiting for client to confirm.'); }
     if (action === 'cancel-task') { return confirmCancel(id); }
     if (action === 'pay') { return openPay(id, +a.getAttribute('data-amount')); }
-    if (action === 'review') { return openReview(id); }
+    if (action === 'review') { return openSetPrice(id); }
     if (['accept-counter','decline-counter','confirm-done','mark-done'].includes(action)) renderDashboard();
   } catch (err) { toast(err.message, true); renderDashboard(); }
 });
@@ -556,15 +543,20 @@ async function renderClient(root) {
 }
 function clientCard(t) {
   let inner = priceBlock(t);
-  if (t.status === 'price_countered') {
-    inner += `<div class="note-box"><b>Manager's note:</b> ${esc(t.manager_note || '')}</div>
+  if (t.status === 'submitted') {
+    inner += `<div class="note-box">${urgencyMeta(t)} — a manager is reviewing your problem and will send you a price offer.</div>`;
+  } else if (t.status === 'price_countered') {
+    inner += `<div class="note-box"><b>Manager's offer: ${money(t.counter_price)}</b>${t.manager_note ? ` — ${esc(t.manager_note)}` : ''}</div>
       <div class="card-actions">
         <button class="btn btn-ok btn-sm" data-action="accept-counter">Accept ${money(t.counter_price)}</button>
+        <button class="btn btn-soft btn-sm" data-action="client-counter">Negotiate</button>
         <button class="btn btn-danger btn-sm" data-action="decline-counter">Decline</button></div>`;
+  } else if (t.status === 'client_countered') {
+    inner += `<div class="note-box"><b>Your counter: ${money(t.counter_price)}</b>${t.manager_note ? ` — ${esc(t.manager_note)}` : ''}<br><span style="color:var(--muted)">Waiting for the manager to reply.</span></div>`;
   } else if (t.status === 'work_done') {
     inner += `<div class="card-actions"><button class="btn btn-ok btn-sm" data-action="confirm-done">Confirm it's fixed ✓</button></div>`;
-  } else if (t.manager_note && t.status === 'open') {
-    inner += `<div class="note-box"><b>Manager's note:</b> ${esc(t.manager_note)}</div>`;
+  } else if (t.status === 'open') {
+    inner += `<div class="note-box">Price agreed — a fixer will be assigned to you shortly.</div>`;
   }
   if (t.fixer) inner += `<div class="meta"><span>Fixer: <b>${esc(t.fixer.name)}</b></span></div>`;
   // Payment: once the job is completed the client pays the agreed price.
@@ -585,40 +577,65 @@ function clientCard(t) {
     }
   }
   // Let the client call it off (e.g. they fixed it themselves) while it's still in progress.
-  if (['submitted', 'price_countered', 'open', 'assigned'].includes(t.status)) {
+  if (['submitted', 'price_countered', 'client_countered', 'open', 'assigned'].includes(t.status)) {
     inner += `<div class="card-actions"><button class="btn btn-ghost btn-sm" data-action="cancel-task">I fixed it myself — cancel</button></div>`;
   }
   return cardShell(t, inner);
 }
 
-/* ---------- FIXER ---------- */
+/* ---------- FIXER ----------
+   Fixers no longer browse a pool. A manager assigns each job to a specific
+   fixer, so the dashboard only shows jobs assigned to this fixer. */
 async function renderFixer(root) {
-  const tab = ['open', 'ongoing', 'unconfirmed', 'finished'].includes(state.dashTab) ? state.dashTab : 'open';
-  const [open, mine] = await Promise.all([api('/api/fixer/open'), api('/api/fixer/mine')]);
+  const tab = ['ongoing', 'unconfirmed', 'finished'].includes(state.dashTab) ? state.dashTab : 'ongoing';
+  const [mine, me] = await Promise.all([api('/api/fixer/mine'), api('/api/me')]);
+  // keep availability (e.g. auto-Busy on assignment) in sync without resetting the tab
+  if (me && me.user) { state.user = me.user; try { localStorage.setItem('digit_user', JSON.stringify(me.user)); } catch {} }
   const ongoing     = mine.tasks.filter(t => t.status === 'assigned');
   const unconfirmed = mine.tasks.filter(t => t.status === 'work_done');
   const finished    = mine.tasks.filter(t => t.status === 'completed');
-  let list, render, empty;
-  if (tab === 'ongoing')          { list = ongoing;     render = fixerMineCard; empty = 'No jobs in progress right now.'; }
-  else if (tab === 'unconfirmed') { list = unconfirmed; render = fixerMineCard; empty = 'Nothing waiting on a client to confirm.'; }
-  else if (tab === 'finished')    { list = finished;    render = fixerMineCard; empty = 'No finished jobs yet.'; }
-  else                            { list = open.tasks;  render = fixerOpenCard; empty = 'No available jobs right now. Check back soon.'; }
+  let list, empty;
+  if (tab === 'unconfirmed')      { list = unconfirmed; empty = 'Nothing waiting on a client to confirm.'; }
+  else if (tab === 'finished')    { list = finished;    empty = 'No finished jobs yet.'; }
+  else                            { list = ongoing;     empty = 'No jobs assigned to you yet. A manager will assign work that fits your skills.'; }
+  const av = state.user.availability || 'available';
   root.innerHTML = `
     <div class="dash-head"><div><h1>Fixer dashboard</h1>
-      <p>Your skills: ${(state.user.skills||[]).map(k => esc(labelOf(k))).join(', ') || '—'} &nbsp;·&nbsp; Rating: ${ratingText(state.user.rating)}</p></div></div>
+      <p>Your skills: ${(state.user.skills||[]).map(k => esc(labelOf(k))).join(', ') || '—'} &nbsp;·&nbsp; Rating: ${ratingText(state.user.rating)}</p></div>
+      <div class="avail-set">
+        <span class="avail-lab">Your status</span>
+        <div class="avail-select">
+          <span class="avail-dot" style="background:${availMeta(av).dot}"></span>
+          <span class="avail-cur" id="avail-cur">${availMeta(av).label}</span>
+          <svg class="avail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <select id="avail-picker" class="avail-native" aria-label="Set your availability">
+            ${AVAIL_ORDER.map(k => `<option value="${k}" ${k===av?'selected':''}>${AVAIL[k].label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
     <div class="tabs">
-      <div class="tab ${tab==='open'?'on':''}" data-tab="open">Available jobs <span class="count">${open.tasks.length}</span></div>
-      <div class="tab ${tab==='ongoing'?'on':''}" data-tab="ongoing">Ongoing <span class="count">${ongoing.length}</span></div>
+      <div class="tab ${tab==='ongoing'?'on':''}" data-tab="ongoing">Assigned to me <span class="count">${ongoing.length}</span></div>
       <div class="tab ${tab==='unconfirmed'?'on':''}" data-tab="unconfirmed">Awaiting confirmation <span class="count">${unconfirmed.length}</span></div>
       <div class="tab ${tab==='finished'?'on':''}" data-tab="finished">Finished <span class="count">${finished.length}</span></div>
     </div>
-    <div class="grid">${list.length ? list.map(render).join('') : emptyBox(empty)}</div>`;
+    <div class="grid">${list.length ? list.map(fixerMineCard).join('') : emptyBox(empty)}</div>`;
   wireTabs(root);
-}
-function fixerOpenCard(t) {
-  return cardShell(t, `${priceBlock(t)}
-    <div class="meta"><span>Posted by <b>${esc(t.client.name)}</b></span><span>${esc(t.urgency||'')}</span></div>
-    <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="accept-task">Accept this job</button></div>`);
+  const picker = $('#avail-picker');
+  if (picker) picker.addEventListener('change', async () => {
+    const v = picker.value;
+    try {
+      const { user } = await api('/api/fixer/availability', { body: { availability: v } });
+      state.user = user;   // update in place (don't reset the active tab)
+      try { localStorage.setItem('digit_user', JSON.stringify(user)); } catch {}
+      const wrap = picker.closest('.avail-select');
+      if (wrap) {
+        wrap.querySelector('.avail-dot').style.background = availMeta(v).dot;
+        wrap.querySelector('.avail-cur').textContent = availMeta(v).label;
+      }
+      toast(`Status set to ${availMeta(v).label}.`);
+    } catch (err) { toast(err.message, true); renderDashboard(); }
+  });
 }
 function fixerMineCard(t) {
   let actions = '';
@@ -629,9 +646,9 @@ function fixerMineCard(t) {
   const rateLine = (t.status === 'completed' && t.rating)
     ? `<div class="rated">Client rated you ${starsRO(t.rating)}${t.rating_comment ? ` — “${esc(t.rating_comment)}”` : ''}</div>` : '';
   const cantHint = t.status === 'assigned'
-    ? `<div class="note-box">Can't complete it? Contact a manager to release it back to other fixers.</div>` : '';
+    ? `<div class="note-box">Can't complete it? Contact a manager — they can reassign it to another fixer.</div>` : '';
   return cardShell(t, `${priceBlock(t)}
-    <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span></div>
+    <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span><span>${esc(t.urgency||'')}</span></div>
     ${payLine}${rateLine}${cantHint}
     ${actions ? `<div class="card-actions">${actions}</div>` : ''}`);
 }
@@ -640,8 +657,8 @@ function fixerMineCard(t) {
 /* One window per task state, so the queue isn't a jumble of everything. */
 const TASK_GROUPS = [
   { key: 'queue',     label: 'Review queue',    empty: 'Nothing to review. Inbox zero! 🎉', match: s => s === 'submitted' },
-  { key: 'awaiting',  label: 'Awaiting client', empty: 'No tasks waiting on a client right now.', match: s => s === 'price_countered' },
-  { key: 'open',      label: 'Open to fixers',  empty: 'No open tasks right now.', match: s => s === 'open' },
+  { key: 'awaiting',  label: 'Negotiating', empty: 'No price negotiations in progress.', match: s => s === 'price_countered' || s === 'client_countered' },
+  { key: 'open',      label: 'Ready to assign', empty: 'Nothing waiting to be assigned right now.', match: s => s === 'open' },
   { key: 'progress',  label: 'In progress',     empty: 'No tasks in progress right now.', match: s => s === 'assigned' },
   { key: 'unconfirmed', label: 'Awaiting confirmation', empty: 'Nothing waiting on a client to confirm.', match: s => s === 'work_done' },
   { key: 'completed', label: 'Completed',       empty: 'No completed tasks yet.', match: s => s === 'completed' },
@@ -658,7 +675,10 @@ function groupCards(groups, active) {
   const def = TASK_GROUPS.find(x => x.key === active) || TASK_GROUPS[0];
   const list = groups[active] || [];
   if (!list.length) return emptyBox(def.empty);
-  const render = active === 'queue' ? managerQueueCard : managerAllCard;
+  const render = active === 'queue'    ? managerQueueCard
+               : active === 'awaiting' ? managerNegotiateCard
+               : active === 'open'     ? managerAssignCard
+               : managerAllCard;
   return list.map(render).join('');
 }
 
@@ -668,16 +688,31 @@ async function renderManager(root) {
   const keys = TASK_GROUPS.map(g => g.key);
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'queue';
   root.innerHTML = `
-    <div class="dash-head"><div><h1>Manager dashboard</h1><p>Review new problems, set fair prices, route to fixers.</p></div></div>
+    <div class="dash-head"><div><h1>Manager dashboard</h1><p>Review new problems, set fair prices, route to fixers.</p></div>
+      ${seeFixersBtn()}</div>
     <div class="tabs spread">${groupTabsHtml(groups, tab)}</div>
     <div class="grid">${groupCards(groups, tab)}</div>`;
   wireTabs(root);
 }
 function managerQueueCard(t) {
   return cardShell(t, `
+    <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span>${urgencyMeta(t)}</div>
+    <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="review">Set a price</button></div>`);
+}
+function managerNegotiateCard(t) {
+  const noteBox = t.manager_note
+    ? `<div class="note-box"><b>${t.status === 'client_countered' ? "Client's note" : 'Your note'}:</b> ${esc(t.manager_note)}</div>` : '';
+  const body = t.status === 'client_countered'
+    ? `<div class="offer-line">Client countered with <b>${money(t.counter_price)}</b>.</div>${noteBox}
+       <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="counter-reply">Respond</button></div>`
+    : `<div class="offer-line">You offered <b>${money(t.counter_price)}</b> — waiting for the client to reply.</div>${noteBox}`;
+  return cardShell(t, `<div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span>${urgencyMeta(t)}</div>${body}`);
+}
+function managerAssignCard(t) {
+  const note = t.manager_note ? `<div class="note-box"><b>Your note:</b> ${esc(t.manager_note)}</div>` : '';
+  return cardShell(t, `${priceBlock(t)}${note}
     <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span><span>${esc(t.urgency||'')}</span></div>
-    <div>Client's budget: ${priceBlock(t)}</div>
-    <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="review">Review &amp; set price</button></div>`);
+    <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="assign">Assign a fixer</button></div>`);
 }
 function managerAllCard(t) {
   const note = (t.status === 'price_countered' && t.manager_note)
@@ -762,27 +797,85 @@ async function doPay(e, id) {
 function confirmRelease(id) {
   modal(`
     <h3>Reassign this task?</h3>
-    <p class="sub">This unassigns the current fixer and puts the job back to “Open to fixers”, so another fixer can take it.</p>
+    <p class="sub">This unassigns the current fixer and moves the job back to “Ready to assign”, so you can hand-pick a different fixer.</p>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" type="button" id="release-yes">Okay</button>
     </div>`);
   $('#release-yes').onclick = async () => {
-    try { await api(`/api/tasks/${id}/release`, { method: 'POST' }); closeModal(); toast('Task released — open to fixers again.'); renderDashboard(); }
+    try { await api(`/api/tasks/${id}/release`, { method: 'POST' }); closeModal(); toast('Unassigned — ready to assign a different fixer.'); renderDashboard(); }
     catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
   };
 }
-function confirmAccept(id) {
+
+/* One row in the assign picker. Non-available fixers are shown but disabled. */
+function assignRowHTML(f) {
+  const skillNames = f.skills.map(k => labelOf(k)).join(', ') || '—';
+  const m = availMeta(f.availability);
+  return `<label class="assign-row${f.assignable ? '' : ' disabled'}" data-name="${esc(f.name.toLowerCase())}">
+    <input type="radio" name="assign-fixer" value="${f.id}" ${f.assignable ? '' : 'disabled'}>
+    <span class="assign-main">
+      <span class="assign-name">${esc(f.name)}</span>
+      <span class="assign-sub">${esc(skillNames)}</span>
+    </span>
+    <span class="assign-meta">
+      <span class="avail"><span class="avail-dot" style="background:${m.dot}"></span>${m.label}</span>
+      <span class="assign-load">${ratingText(f.rating)} · ${f.activeJobs} active</span>
+    </span>
+  </label>`;
+}
+
+/* Manager hand-picks a fixer for an approved task. All fixers are listed
+   alphabetically in a searchable dropdown; matching-skill fixers get a tag, and
+   only fixers whose status is "Available" can actually be chosen. */
+async function openAssign(id) {
+  modal(`<h3>Assign a fixer</h3><p class="sub">${loadingBox('Loading your fixers…')}</p>`);
+  let fixers, task;
+  try {
+    const [fr, tr] = await Promise.all([api('/api/manager/fixers'), api('/api/manager/all')]);
+    fixers = fr.fixers;
+    task = tr.tasks.find(t => String(t.id) === String(id));
+  } catch (err) { closeModal(); toast(err.message, true); return; }
+  if (!task) { closeModal(); toast('That task is no longer available.', true); renderDashboard(); return; }
+  if (!fixers.length) { closeModal(); toast('No fixers exist yet to assign.', true); return; }
+  fixers.sort((a, b) => a.name.localeCompare(b.name));       // alphabetical
+  const availCount = fixers.filter(f => f.assignable).length;
   modal(`
-    <h3>Take this job?</h3>
-    <p class="sub">Only accept if you're confident you can complete it. Once you accept, it's assigned to you and removed from other fixers.</p>
+    <h3>Assign a fixer</h3>
+    <p class="sub">Pick who should handle this task. Only fixers marked <b>Available</b> can be assigned (${availCount} right now).</p>
+    <div class="form-error" id="assign-error"></div>
+    <div class="combo">
+      <input class="input" id="assign-search" placeholder="Search fixers by name or surname…" autocomplete="off">
+      <div class="assign-list" id="assign-results"></div>
+    </div>
     <div class="flow-actions">
-      <button class="btn btn-ghost" type="button" onclick="closeModal()">Not now</button>
-      <button class="btn btn-primary" type="button" id="accept-yes">Yes, I'll take it</button>
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" id="assign-yes">Assign fixer</button>
     </div>`);
-  $('#accept-yes').onclick = async () => {
-    try { await api(`/api/tasks/${id}/accept`, { method: 'POST' }); closeModal(); toast('Job is yours — good luck!'); renderDashboard(); }
-    catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
+  const results = $('#assign-results');
+  const search = $('#assign-search');
+  let selected = '';   // chosen fixer id (survives re-filtering)
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const shown = fixers.filter(f =>
+      !tokens.length || tokens.every(tk => f.name.toLowerCase().split(/\s+/).some(w => w.startsWith(tk)) || f.name.toLowerCase().includes(tk)));
+    results.innerHTML = shown.length
+      ? shown.map(f => assignRowHTML(f)).join('')
+      : `<div class="assign-none">No fixer matches “${esc(search.value)}”.</div>`;
+    if (selected) { const r = results.querySelector(`input[value="${selected}"]`); if (r && !r.disabled) r.checked = true; }
+  };
+  results.addEventListener('change', e => { if (e.target.name === 'assign-fixer') selected = e.target.value; });
+  search.addEventListener('input', draw);
+  draw();
+  search.focus();
+  $('#assign-yes').onclick = async () => {
+    const err = $('#assign-error');
+    if (!selected) { err.textContent = 'Search and choose an available fixer first.'; err.classList.add('show'); return; }
+    try {
+      await api(`/api/tasks/${id}/assign`, { body: { fixer_id: selected } });
+      closeModal(); toast('Fixer assigned. 🛠️'); renderDashboard();
+    } catch (e) { if (err) { err.textContent = e.message; err.classList.add('show'); } else toast(e.message, true); }
   };
 }
 function confirmCancel(id) {
@@ -801,29 +894,102 @@ function confirmCancel(id) {
   };
 }
 
-function openReview(id) {
+/* Manager makes the FIRST offer: set a service price; the urgency fee is added
+   on top to form the total offer sent to the client. */
+async function openSetPrice(id) {
+  modal(`<h3>Set a price</h3><p class="sub">${loadingBox('Loading…')}</p>`);
+  let task = null;
+  try {
+    const { tasks } = await api('/api/manager/all');
+    task = tasks.find(t => String(t.id) === String(id));
+  } catch (err) { closeModal(); toast(err.message, true); return; }
+  if (!task || task.status !== 'submitted') { closeModal(); toast('This task is no longer awaiting a first price.', true); renderDashboard(); return; }
+  const fee = task.urgency_fee || 0;
   modal(`
-    <h3>Review &amp; price this task</h3>
-    <p class="sub">Approve the client's budget, or suggest a fair price with a friendly explanation.</p>
+    <h3>Set a price</h3>
+    <p class="sub">Set your price for the work. The <b>${esc(task.urgency)}</b> urgency fee of <b>${money(fee)}</b> is added on top. The client can accept or negotiate.</p>
     <div class="form-error" id="rev-error"></div>
-    <label class="field"><span class="lab">Adjusted price (USD)</span><input class="input" id="rev-price" type="number" min="0" placeholder="Leave blank to keep client's price"></label>
-    <label class="field"><span class="lab">Note to the client</span><textarea class="input" id="rev-note" placeholder="e.g. This needs a part replacement plus about 2 hours of labour, which is why it's $80."></textarea></label>
+    <label class="field"><span class="lab">Price for the work (USD)</span><input class="input" id="rev-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 50"></label>
+    <div class="offer-total" id="rev-total">Total offer: <b>${money(fee)}</b> <span>(work ${money(0)} + ${money(fee)} urgency)</span></div>
+    <label class="field"><span class="lab">Note to the client <span class="opt">optional</span></span><textarea class="input" id="rev-note" placeholder="e.g. This needs a part replacement plus about 2 hours of labour."></textarea></label>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-soft" type="button" id="rev-approve">Approve price</button>
-      <button class="btn btn-primary" type="button" id="rev-counter">Suggest new price</button>
+      <button class="btn btn-primary" type="button" id="rev-send">Send offer</button>
     </div>`);
-  $('#rev-approve').onclick = () => doReview(id, 'approve');
-  $('#rev-counter').onclick = () => doReview(id, 'counter');
+  const priceEl = $('#rev-price');
+  const totalEl = $('#rev-total');
+  const sync = () => { const s = parseInt(priceEl.value, 10) || 0;
+    totalEl.innerHTML = `Total offer: <b>${money(s + fee)}</b> <span>(work ${money(s)} + ${money(fee)} urgency)</span>`; };
+  priceEl.addEventListener('input', sync);
+  $('#rev-send').onclick = async () => {
+    const err = $('#rev-error');
+    const service = parseInt(priceEl.value, 10);
+    if (!(service >= 0)) { err.textContent = 'Enter a price for the work ($0 or more).'; err.classList.add('show'); return; }
+    try {
+      await api(`/api/tasks/${id}/review`, { body: { service_price: service, manager_note: $('#rev-note').value } });
+      closeModal(); toast('Offer sent to the client.'); renderDashboard();
+    } catch (e) { if (err) { err.textContent = e.message; err.classList.add('show'); } else toast(e.message, true); }
+  };
 }
-async function doReview(id, action) {
-  const counter_price = $('#rev-price').value;
-  const manager_note = $('#rev-note').value;
-  try {
-    await api(`/api/tasks/${id}/review`, { body: { action, counter_price, manager_note } });
-    closeModal(); toast(action === 'approve' ? 'Approved and opened to fixers.' : 'Sent your suggested price to the client.');
-    renderDashboard();
-  } catch (err) { const e = $('#rev-error'); if (e) { e.textContent = err.message; e.classList.add('show'); } else toast(err.message, true); }
+
+/* Client negotiates: counter the manager's offer with their own number + message. */
+async function openClientCounter(id) {
+  modal(`<h3>Make a counter-offer</h3><p class="sub">${loadingBox('Loading…')}</p>`);
+  let task = null;
+  try { const { tasks } = await api('/api/tasks/mine'); task = tasks.find(t => String(t.id) === String(id)); }
+  catch (err) { closeModal(); toast(err.message, true); return; }
+  if (!task || task.status !== 'price_countered') { closeModal(); toast("There's no offer to respond to right now.", true); renderDashboard(); return; }
+  modal(`
+    <h3>Make a counter-offer</h3>
+    <p class="sub">The manager offered <b>${money(task.counter_price)}</b>. Propose a price that works for you — the manager can accept or counter back.</p>
+    <div class="form-error" id="cc-error"></div>
+    <label class="field"><span class="lab">Your price (USD)</span><input class="input" id="cc-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 40"></label>
+    <label class="field"><span class="lab">Message <span class="opt">optional</span></span><textarea class="input" id="cc-note" placeholder="e.g. That's a bit high for me — could we do ₾40?"></textarea></label>
+    <div class="flow-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" id="cc-send">Send counter</button>
+    </div>`);
+  $('#cc-send').onclick = async () => {
+    const err = $('#cc-error');
+    const price = parseInt($('#cc-price').value, 10);
+    if (!(price >= 0)) { err.textContent = 'Enter the price you can offer.'; err.classList.add('show'); return; }
+    try {
+      await api(`/api/tasks/${id}/respond`, { body: { action: 'counter', price, note: $('#cc-note').value } });
+      closeModal(); toast('Counter-offer sent to the manager.'); renderDashboard();
+    } catch (e) { if (err) { err.textContent = e.message; err.classList.add('show'); } else toast(e.message, true); }
+  };
+}
+
+/* Manager replies to a client's counter: accept, counter back, or decline. */
+async function openCounterReply(id) {
+  modal(`<h3>Client's counter-offer</h3><p class="sub">${loadingBox('Loading…')}</p>`);
+  let task = null;
+  try { const { tasks } = await api('/api/manager/all'); task = tasks.find(t => String(t.id) === String(id)); }
+  catch (err) { closeModal(); toast(err.message, true); return; }
+  if (!task || task.status !== 'client_countered') { closeModal(); toast('There is no client counter to reply to.', true); renderDashboard(); return; }
+  modal(`
+    <h3>Client's counter-offer</h3>
+    <p class="sub">The client countered with <b>${money(task.counter_price)}</b>${task.manager_note ? ` — “${esc(task.manager_note)}”` : ''}. Accept it, counter back, or decline.</p>
+    <div class="form-error" id="cr-error"></div>
+    <label class="field"><span class="lab">Counter price <span class="opt">only if countering</span></span><input class="input" id="cr-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 55"></label>
+    <label class="field"><span class="lab">Note to the client <span class="opt">optional</span></span><textarea class="input" id="cr-note" placeholder="e.g. I can meet you at ₾55."></textarea></label>
+    <div class="flow-actions">
+      <button class="btn btn-danger" type="button" id="cr-decline">Decline</button>
+      <button class="btn btn-soft" type="button" id="cr-counter">Counter</button>
+      <button class="btn btn-ok" type="button" id="cr-accept">Accept ${money(task.counter_price)}</button>
+    </div>`);
+  const err = $('#cr-error');
+  const send = async (body, okMsg) => {
+    try { await api(`/api/tasks/${id}/counter-reply`, { body }); closeModal(); toast(okMsg); renderDashboard(); }
+    catch (e) { if (err) { err.textContent = e.message; err.classList.add('show'); } else toast(e.message, true); }
+  };
+  $('#cr-accept').onclick = () => send({ action: 'accept' }, 'Accepted — ready to assign a fixer.');
+  $('#cr-decline').onclick = () => send({ action: 'decline' }, 'Counter declined. Task closed.');
+  $('#cr-counter').onclick = () => {
+    const price = parseInt($('#cr-price').value, 10);
+    if (!(price >= 0)) { err.textContent = 'Enter your counter price.'; err.classList.add('show'); return; }
+    send({ action: 'counter', price, manager_note: $('#cr-note').value }, 'Counter sent to the client.');
+  };
 }
 
 /* ---------- ADMIN ---------- */
@@ -841,7 +1007,8 @@ async function renderAdmin(root) {
     body = `<div class="grid">${groupCards(groups, tab)}</div>`;
   }
   root.innerHTML = `
-    <div class="dash-head"><div><h1>Admin dashboard</h1><p>Manage people and triage tasks by state.</p></div></div>
+    <div class="dash-head"><div><h1>Admin dashboard</h1><p>Manage people and triage tasks by state.</p></div>
+      ${seeFixersBtn()}</div>
     <div class="tabs spread">${tabsHtml}</div>
     ${body}`;
   wireTabs(root);
@@ -855,15 +1022,23 @@ function sortUsers(users) {
 function adminPeople(users) {
   const counts = users.reduce((m,u)=>(m[u.role]=(m[u.role]||0)+1,m),{});
   const filter = state.peopleFilter || 'all';
-  const filtered = filter === 'all' ? users : users.filter(u => u.role === filter);
+  const filtered = filter === 'all' ? users
+    : (filter === 'resigned' || filter === 'dismissed') ? users.filter(u => (u.employment_status || 'active') === filter)
+    : users.filter(u => u.role === filter);
   const rows = sortUsers(filtered).map(u => {
     const canChange = !u.is_primary && u.id !== state.user.id && u.role !== 'client';
     let control = '<span style="color:var(--muted);font-size:.85rem">—</span>';
     if (u.is_primary) control = '<span style="color:var(--muted);font-size:.85rem">primary admin</span>';
     else if (u.id === state.user.id) control = '<span style="color:var(--muted);font-size:.85rem">(you)</span>';
-    else if (canChange) control = `<select class="input" data-uid="${u.id}" data-current="${u.role}" data-name="${esc(u.name)}" style="padding:.34rem 2rem .46rem .7rem;width:auto;font-size:.85rem">
-        ${['fixer','manager','admin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
+    else if (canChange) {
+      const st = u.employment_status || 'active';
+      const curSel = st !== 'active' ? st : u.role;   // show resigned/dismissed if inactive
+      control = `<select class="input role-select ${st !== 'active' ? 'emp-danger' : ''}" data-uid="${u.id}" data-current="${curSel}" data-name="${esc(u.name)}" style="padding:.34rem 2rem .46rem .7rem;width:auto;font-size:.85rem">
+        ${['fixer','manager','admin'].map(r => `<option value="${r}" ${curSel===r?'selected':''}>${r}</option>`).join('')}
+        <option class="opt-danger" value="resigned" ${curSel==='resigned'?'selected':''}>resigned</option>
+        <option class="opt-danger" value="dismissed" ${curSel==='dismissed'?'selected':''}>dismissed</option>
       </select>`;
+    }
     const rating = (u.role === 'fixer' && u.rating && u.rating.count)
       ? `<span class="rating-avg">★ ${u.rating.avg.toFixed(1)}</span> <span style="color:var(--muted)">(${u.rating.count})</span>` : '—';
     return `<tr>
@@ -885,11 +1060,29 @@ function adminPeople(users) {
         <select class="input" id="people-filter">
           ${[['all','Everyone'],['admin','Admins'],['manager','Managers'],['fixer','Fixers'],['client','Clients']]
             .map(([v, l]) => `<option value="${v}" ${filter === v ? 'selected' : ''}>${l}</option>`).join('')}
+          ${[['resigned','Resigned'],['dismissed','Dismissed']]
+            .map(([v, l]) => `<option class="opt-danger" value="${v}" ${filter === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </label>
     </div>
     <table class="users"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Rating</th><th>Qualifications</th><th>Change role</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.5rem">No one with that role.</td></tr>`}</tbody></table>`;
+}
+function confirmEmployment(id, name, status) {
+  const copy = {
+    dismissed: { title: `Dismiss ${name}?`, sub: "They'll be removed from the workforce and can no longer log in. Their record is kept for your reference (do-not-rehire) — you can reactivate them later.", btn: 'Yes, dismiss', cls: 'btn-danger', ok: `${name} dismissed.` },
+    resigned:  { title: `Mark ${name} as resigned?`, sub: 'They left voluntarily. Their account is deactivated but kept in the database — you can reactivate them later.', btn: 'Mark resigned', cls: 'btn-primary', ok: `${name} marked resigned.` },
+    active:    { title: `Reactivate ${name}?`, sub: 'They will be able to log in and take on work again.', btn: 'Reactivate', cls: 'btn-primary', ok: `${name} reactivated.` },
+  }[status];
+  modal(`<h3>${esc(copy.title)}</h3><p class="sub">${copy.sub}</p>
+    <div class="flow-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn ${copy.cls}" type="button" id="emp-yes">${copy.btn}</button>
+    </div>`);
+  $('#emp-yes').onclick = async () => {
+    try { await api(`/api/admin/users/${id}/employment`, { body: { status } }); closeModal(); toast(copy.ok); renderDashboard(); }
+    catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
+  };
 }
 function wireRoleSelects() {
   $$('#dash-root select[data-uid]').forEach(sel => sel.onchange = () => {
@@ -898,7 +1091,9 @@ function wireRoleSelects() {
     const next = sel.value;
     sel.value = cur;              // revert the dropdown — only apply after confirming
     if (next === cur) return;
-    confirmRole(id, sel.getAttribute('data-name'), next);
+    const name = sel.getAttribute('data-name');
+    if (next === 'resigned' || next === 'dismissed') return confirmEmployment(id, name, next);
+    confirmRole(id, name, next);   // picking a real role also reactivates the person
   });
   const pf = $('#people-filter');
   if (pf) pf.onchange = () => { state.peopleFilter = pf.value; renderDashboard(); };
@@ -929,6 +1124,14 @@ function fmtDate(s) {
   const d = new Date(s.replace(' ', 'T') + 'Z');
   return isNaN(d) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
+/* Exact local date + time (to the second) for the task timeline. Stored times are
+   UTC ("YYYY-MM-DD HH:MM:SS"), so normalise to ISO+Z before parsing. */
+function fmtDateTime(s) {
+  if (!s) return '';
+  const d = new Date(s.replace(' ', 'T') + 'Z');
+  return isNaN(d) ? esc(s) : d.toLocaleString(undefined,
+    { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 async function renderReviews() {
   const root = $('#reviews-root');
   root.innerHTML = loadingBox();
@@ -953,7 +1156,59 @@ function reviewCard(r) {
       ${starsRO(r.rating)}
     </div>
     ${r.comment ? `<p class="review-text">“${esc(r.comment)}”</p>` : `<p class="review-text muted">No comment left.</p>`}
-    <div class="review-fixed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Fixed by <b>${esc(r.fixer)}</b> · ${esc(r.categoryLabel)}</div>
+    <div class="review-fixed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Fixed by <b>${esc(r.fixer)}</b></div>
+  </div>`;
+}
+
+/* ---------- FIXER PROFILES (manager / admin) ---------- */
+function seeFixersBtn() {
+  return `<button class="btn btn-primary" data-go="fixers">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Fixer profiles</button>`;
+}
+async function renderFixers() {
+  const root = $('#fixers-root');
+  root.innerHTML = loadingBox('Loading fixer profiles…');
+  let data;
+  try { data = await api('/api/staff/fixers'); } catch { root.innerHTML = emptyBox('Could not load fixer profiles.'); return; }
+  const fixers = data.fixers;
+  const head = `<div class="dash-head fixers-head"><div>
+    <h1>Fixer profiles</h1>
+    <p>Who can do what — skills, availability, ratings and stats to help you assign the right person.</p>
+  </div></div>`;
+  const body = fixers.length
+    ? `<div class="fixer-grid">${fixers.map(fixerProfileCard).join('')}</div>`
+    : emptyBox('No fixers have joined yet.');
+  root.innerHTML = head + body;
+}
+function fixerProfileCard(f) {
+  const m = availMeta(f.availability);
+  const skills = f.skills.length
+    ? f.skills.map(k => `<span class="fp-skill">${esc(labelOf(k))}</span>`).join('')
+    : `<span class="muted">No skills listed yet.</span>`;
+  const avgTxt = f.rating && f.rating.count ? f.rating.avg.toFixed(1) : '—';
+  return `<div class="fixer-prof">
+    <div class="fp-top">
+      ${avatarHTML(f.name, f.avatar, 52)}
+      <div class="fp-id">
+        <b>${esc(f.name)}</b>
+        <span class="avail"><span class="avail-dot" style="background:${m.dot}"></span>${m.label}</span>
+      </div>
+    </div>
+    ${f.bio ? `<p class="fp-bio">${esc(f.bio)}</p>` : ''}
+    <div class="fp-meta">
+      ${f.experience ? `<span class="fp-tag">🧰 ${esc(f.experience)} experience</span>` : ''}
+      ${f.work_mode ? `<span class="fp-tag">📍 ${esc(f.work_mode)}</span>` : ''}
+    </div>
+    <div class="fp-group">
+      <div class="fp-skills-lab">Can fix</div>
+      <div class="fp-skills">${skills}</div>
+    </div>
+    <div class="fp-stats">
+      <div class="fp-stat"><span class="n">${f.completedJobs}</span><span class="l">completed</span></div>
+      <div class="fp-stat"><span class="n">${f.activeJobs}</span><span class="l">active now</span></div>
+      <div class="fp-stat"><span class="n">${avgTxt}</span><span class="l">avg rating${f.rating && f.rating.count ? ` (${f.rating.count})` : ''}</span></div>
+    </div>
   </div>`;
 }
 

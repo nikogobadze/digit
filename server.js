@@ -19,6 +19,25 @@ const JWT_SECRET = process.env.JWT_SECRET || 'digit-dev-secret-change-me';
 const COOKIE = 'digit_token';
 const IS_PROD = !!process.env.VERCEL || process.env.NODE_ENV === 'production';
 
+/* Fixer availability. Only "available" fixers can be handed new work; the rest
+   are shown to the manager but cannot be assigned. */
+const AVAILABILITY = {
+  available: { label: 'Available', assignable: true },
+  busy:      { label: 'Busy',      assignable: false },
+  away:      { label: 'Away',      assignable: false },
+  offline:   { label: 'Offline',   assignable: false },
+};
+const availMeta = (v) => AVAILABILITY[v] || AVAILABILITY.available;
+
+/* Urgency surcharge — added on top of the manager's service price for the first
+   offer. "Whenever" is free; sooner costs more. */
+const URGENCY_FEE = {
+  'No rush — whenever': 0,
+  'Within a few days': 20,
+  'As soon as possible': 30,
+};
+const urgencyFee = (u) => URGENCY_FEE[u] || 0;
+
 app.set('trust proxy', 1); // behind Vercel's proxy
 app.use(express.json());
 app.use(cookieParser());
@@ -68,6 +87,8 @@ async function publicUser(u) {
     hourly_rate: u.hourly_rate || null, work_mode: u.work_mode || null,
     is_primary: !!u.is_primary, skills,
     avatar: fileUrl(u.avatar),
+    employment_status: u.employment_status || 'active',
+    availability: u.role === 'fixer' ? (u.availability || 'available') : undefined,
     rating: u.role === 'fixer' ? await ratingFor(u.id) : undefined,
   };
 }
@@ -94,6 +115,7 @@ async function taskView(t) {
     title: t.title, description: t.description,
     photos: t.photo_path ? t.photo_path.split(',').filter(Boolean).map(fileUrl) : [],
     urgency: t.urgency,
+    urgency_fee: urgencyFee(t.urgency),
     proposed_price: t.proposed_price,
     counter_price: t.counter_price,
     manager_note: t.manager_note,
@@ -117,8 +139,13 @@ function setAuthCookie(res, user) {
 async function currentUser(req) {
   const token = req.cookies[COOKIE];
   if (!token) return null;
-  try { const { id } = jwt.verify(token, JWT_SECRET); return (await userById(id)) || null; }
-  catch { return null; }
+  try {
+    const { id } = jwt.verify(token, JWT_SECRET);
+    const u = await userById(id);
+    // Dismissed/resigned accounts stay in the DB but can no longer act.
+    if (!u || (u.employment_status && u.employment_status !== 'active')) return null;
+    return u;
+  } catch { return null; }
 }
 const auth = ah(async (req, res, next) => {
   const u = await currentUser(req);
@@ -214,6 +241,8 @@ app.post('/api/auth/login', ah(async (req, res) => {
   const u = await userByEmail((email || '').toLowerCase().trim());
   if (!u || !bcrypt.compareSync(password || '', u.password_hash))
     return res.status(401).json({ error: 'Wrong email or password.' });
+  if (u.employment_status && u.employment_status !== 'active')
+    return res.status(403).json({ error: 'This account is no longer active. Please contact an administrator.' });
   setAuthCookie(res, u);
   res.json({ user: await publicUser(u) });
 }));
@@ -271,24 +300,27 @@ app.post('/api/profile', auth, ah(async (req, res) => {
    CLIENT
 ================================================================== */
 app.post('/api/tasks', auth, requireRole('client'), upload.array('photos', 4), ah(async (req, res) => {
-  const { category, title, description, urgency, proposed_price } = req.body || {};
-  if (!category || !CATEGORY_KEYS.has(category)) return res.status(400).json({ error: 'Choose a valid problem type.' });
+  let { category, title, description, urgency } = req.body || {};
+  // Category is optional now — if the client picks one it must be valid; otherwise
+  // we file it under "other" (the client's title/description carries the detail).
+  if (category && !CATEGORY_KEYS.has(category)) return res.status(400).json({ error: 'Choose a valid problem type.' });
+  if (!category) category = 'other';
   if (!description || description.trim().length < 5) return res.status(400).json({ error: 'Please describe the problem.' });
-  const priceNum = proposed_price ? parseInt(proposed_price, 10) : null;
-  if (priceNum != null && priceNum < 10) return res.status(400).json({ error: 'The lowest you can offer is $10.' });
-  let customCategory = null;
-  if (category === 'other') {
-    customCategory = ((req.body || {}).custom_category || '').trim().slice(0, 60);
-    if (!customCategory) return res.status(400).json({ error: 'Please type what kind of problem it is.' });
-  }
+  // The client no longer names a price — a manager makes the first offer. Urgency
+  // is normalised to a known value so its surcharge is well-defined.
+  urgency = URGENCY_FEE[urgency] != null ? urgency : 'As soon as possible';
+  const customCategory = category === 'other'
+    ? (((req.body || {}).custom_category || '').trim().slice(0, 60) || null)
+    : null;
   let photoPath = null;
   if (req.files && req.files.length) photoPath = (await Promise.all(req.files.map(saveUpload))).join(',');
   const r = await run(`INSERT INTO tasks (client_id,category,custom_category,title,description,photo_path,urgency,proposed_price,status)
-                       VALUES (?,?,?,?,?,?,?,?, 'submitted') RETURNING id`,
-    [req.user.id, category, customCategory, (title && title.trim()) || customCategory || labelFor(category),
-     description.trim(), photoPath, urgency || 'As soon as possible', priceNum]);
+                       VALUES (?,?,?,?,?,?,?,NULL, 'submitted') RETURNING id`,
+    [req.user.id, category, customCategory, (title && title.trim()) || customCategory || description.trim().slice(0, 60),
+     description.trim(), photoPath, urgency]);
   const id = Number(r.rows[0].id);
-  await event(id, req.user.id, `Problem posted${priceNum ? ` with a suggested budget of $${priceNum}` : ''}. Waiting for a manager to review.`);
+  const fee = urgencyFee(urgency);
+  await event(id, req.user.id, `Problem posted (${urgency}${fee ? `, +₾${fee} urgency fee` : ', free tier'}). Waiting for a manager to set a price.`);
   res.json({ task: await taskView(await taskById(id)) });
 }));
 
@@ -296,16 +328,27 @@ app.get('/api/tasks/mine', auth, requireRole('client'), ah(async (req, res) => {
   res.json({ tasks: await viewAll(await all('SELECT * FROM tasks WHERE client_id = ? ORDER BY created_at DESC', [req.user.id])) });
 }));
 
+// Client responds to the manager's current price offer: accept, counter (negotiate
+// with their own number + optional message), or decline.
 app.post('/api/tasks/:id/respond', auth, requireRole('client'), ah(async (req, res) => {
   const t = await taskById(+req.params.id);
   if (!t || t.client_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
-  if (t.status !== 'price_countered') return res.status(400).json({ error: 'Nothing to respond to.' });
-  if ((req.body || {}).action === 'accept') {
+  if (t.status !== 'price_countered') return res.status(400).json({ error: "There's no offer to respond to right now." });
+  const { action } = req.body || {};
+  const note = ((req.body || {}).note || '').trim().slice(0, 300) || null;
+  if (action === 'accept') {
     await run(`UPDATE tasks SET status='open', agreed_price=?, updated_at=datetime('now') WHERE id=?`, [t.counter_price, t.id]);
-    await event(t.id, req.user.id, `Client accepted the adjusted price of $${t.counter_price}. Now open to fixers.`);
-  } else {
+    await event(t.id, req.user.id, `Client accepted the price of ₾${t.counter_price}. Ready for a manager to assign a fixer.`);
+  } else if (action === 'counter') {
+    const price = parseInt((req.body || {}).price, 10);
+    if (!(price >= 0)) return res.status(400).json({ error: 'Enter the price you can offer.' });
+    await run(`UPDATE tasks SET status='client_countered', counter_price=?, manager_note=?, updated_at=datetime('now') WHERE id=?`, [price, note, t.id]);
+    await event(t.id, req.user.id, `Client countered with ₾${price}${note ? `: ${note}` : '.'}`);
+  } else if (action === 'decline') {
     await run(`UPDATE tasks SET status='declined', updated_at=datetime('now') WHERE id=?`, [t.id]);
-    await event(t.id, req.user.id, 'Client declined the adjusted price. Task closed.');
+    await event(t.id, req.user.id, 'Client declined the price. Task closed.');
+  } else {
+    return res.status(400).json({ error: 'Unknown action.' });
   }
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
@@ -327,7 +370,7 @@ app.post('/api/tasks/:id/pay', auth, requireRole('client'), ah(async (req, res) 
   const amount = t.agreed_price != null ? t.agreed_price : t.proposed_price;
   const last4 = String((req.body || {}).last4 || '').replace(/\D/g, '').slice(-4) || null;
   await run(`UPDATE tasks SET paid=1, paid_at=datetime('now'), card_last4=?, updated_at=datetime('now') WHERE id=?`, [last4, t.id]);
-  await event(t.id, req.user.id, `Client paid $${amount}${last4 ? ` (card ending ${last4})` : ''}. 💳`);
+  await event(t.id, req.user.id, `Client paid ₾${amount}${last4 ? ` (card ending ${last4})` : ''}. 💳`);
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
@@ -349,7 +392,7 @@ app.post('/api/tasks/:id/rate', auth, requireRole('client'), ah(async (req, res)
 app.post('/api/tasks/:id/cancel', auth, requireRole('client'), ah(async (req, res) => {
   const t = await taskById(+req.params.id);
   if (!t || t.client_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
-  if (!['submitted', 'price_countered', 'open', 'assigned'].includes(t.status))
+  if (!['submitted', 'price_countered', 'client_countered', 'open', 'assigned'].includes(t.status))
     return res.status(400).json({ error: 'This task can no longer be cancelled.' });
   const hadFixer = !!t.assigned_fixer_id;
   await run(`UPDATE tasks SET status='cancelled', updated_at=datetime('now') WHERE id=?`, [t.id]);
@@ -369,59 +412,144 @@ app.get('/api/manager/all', auth, requireRole('manager', 'admin'), ah(async (req
   res.json({ tasks: await viewAll(await all('SELECT * FROM tasks ORDER BY created_at DESC')) });
 }));
 
+// Manager makes the FIRST price offer on a freshly submitted task. They set a
+// service price for the work; the urgency surcharge is added on top automatically.
+// The offer then goes to the client, who can accept, counter, or decline.
 app.post('/api/tasks/:id/review', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
   const t = await taskById(+req.params.id);
   if (!t) return res.status(404).json({ error: 'Task not found.' });
-  if (t.status !== 'submitted') return res.status(400).json({ error: 'This task is not awaiting review.' });
-  const { action, counter_price, manager_note } = req.body || {};
-  if (action === 'approve') {
-    const price = t.proposed_price || (counter_price ? parseInt(counter_price, 10) : null);
-    await run(`UPDATE tasks SET status='open', agreed_price=?, manager_id=?, manager_note=?, updated_at=datetime('now') WHERE id=?`,
-      [price, req.user.id, manager_note || null, t.id]);
-    await event(t.id, req.user.id, `Manager approved${price ? ` the price of $${price}` : ''} and opened it to qualified fixers.`);
+  if (t.status !== 'submitted') return res.status(400).json({ error: 'This task is not awaiting a first price.' });
+  const service = parseInt((req.body || {}).service_price, 10);
+  if (!(service >= 0)) return res.status(400).json({ error: 'Enter a price for the work (₾0 or more).' });
+  const note = ((req.body || {}).manager_note || '').trim().slice(0, 300) || null;
+  const fee = urgencyFee(t.urgency);
+  const total = service + fee;
+  await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=?, manager_note=?, updated_at=datetime('now') WHERE id=?`,
+    [total, req.user.id, note, t.id]);
+  await event(t.id, req.user.id,
+    `Manager offered ₾${total}${fee ? ` (₾${service} for the work + ₾${fee} ${t.urgency} fee)` : ''}${note ? `: ${note}` : '.'}`);
+  res.json({ task: await taskView(await taskById(t.id)) });
+}));
+
+// Manager replies to a client's counter-offer: accept it, counter back with a new
+// total, or decline. Keeps the back-and-forth going until someone agrees.
+app.post('/api/tasks/:id/counter-reply', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  const t = await taskById(+req.params.id);
+  if (!t) return res.status(404).json({ error: 'Task not found.' });
+  if (t.status !== 'client_countered') return res.status(400).json({ error: 'There is no client counter to reply to.' });
+  const { action } = req.body || {};
+  const note = ((req.body || {}).manager_note || '').trim().slice(0, 300) || null;
+  if (action === 'accept') {
+    await run(`UPDATE tasks SET status='open', agreed_price=?, manager_id=COALESCE(manager_id,?), updated_at=datetime('now') WHERE id=?`, [t.counter_price, req.user.id, t.id]);
+    await event(t.id, req.user.id, `Manager accepted the client's price of ₾${t.counter_price}. Ready to assign a fixer.`);
   } else if (action === 'counter') {
-    const price = parseInt(counter_price, 10);
-    if (!price) return res.status(400).json({ error: 'Enter the adjusted price.' });
-    if (!manager_note) return res.status(400).json({ error: 'Explain the price to the client.' });
-    await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=?, manager_note=?, updated_at=datetime('now') WHERE id=?`,
-      [price, req.user.id, manager_note, t.id]);
-    await event(t.id, req.user.id, `Manager proposed $${price}: ${manager_note}`);
+    const price = parseInt((req.body || {}).price, 10);
+    if (!(price >= 0)) return res.status(400).json({ error: 'Enter your counter price.' });
+    await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=COALESCE(manager_id,?), manager_note=?, updated_at=datetime('now') WHERE id=?`, [price, req.user.id, note, t.id]);
+    await event(t.id, req.user.id, `Manager countered with ₾${price}${note ? `: ${note}` : '.'}`);
+  } else if (action === 'decline') {
+    await run(`UPDATE tasks SET status='declined', updated_at=datetime('now') WHERE id=?`, [t.id]);
+    await event(t.id, req.user.id, "Manager declined the client's price. Task closed.");
   } else {
     return res.status(400).json({ error: 'Unknown action.' });
   }
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
-// Manager/admin releases an assigned task back to "open" (e.g. the fixer can't
-// complete it). Fixers cannot do this themselves.
+// Manager/admin unassigns an in-progress task (e.g. the fixer can't complete it),
+// putting it back to "open" so a different fixer can be hand-picked. Fixers cannot
+// do this themselves.
 app.post('/api/tasks/:id/release', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
   const t = await taskById(+req.params.id);
   if (!t) return res.status(404).json({ error: 'Task not found.' });
   if (t.status !== 'assigned') return res.status(400).json({ error: 'Only an in-progress task can be released.' });
   const prev = t.assigned_fixer_id ? await userById(t.assigned_fixer_id) : null;
   await run(`UPDATE tasks SET status='open', assigned_fixer_id=NULL, updated_at=datetime('now') WHERE id=?`, [t.id]);
-  await event(t.id, req.user.id, `${req.user.name} released the task${prev ? ` from ${prev.name}` : ''}. It's open to fixers again.`);
+  await event(t.id, req.user.id, `${req.user.name} unassigned the task${prev ? ` from ${prev.name}` : ''}. Ready to assign a different fixer.`);
+  res.json({ task: await taskView(await taskById(t.id)) });
+}));
+
+// Roster of fixers a manager can hand-pick from, with skills, rating and current
+// workload so the manager can choose who's the best fit for a given task.
+app.get('/api/manager/fixers', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  const rows = await all(`SELECT * FROM users WHERE role='fixer' AND employment_status='active' ORDER BY name ASC`);
+  const fixers = await Promise.all(rows.map(async f => {
+    const av = f.availability || 'available';
+    return {
+      id: f.id, name: f.name,
+      skills: (await all('SELECT category FROM fixer_skills WHERE user_id = ?', [f.id])).map(r => r.category),
+      experience: f.experience || null,
+      work_mode: f.work_mode || null,
+      availability: av,
+      availabilityLabel: availMeta(av).label,
+      assignable: availMeta(av).assignable,
+      rating: await ratingFor(f.id),
+      activeJobs: Number((await get(
+        `SELECT COUNT(*) AS n FROM tasks WHERE assigned_fixer_id = ? AND status IN ('assigned','work_done')`, [f.id])).n) || 0,
+    };
+  }));
+  res.json({ fixers });
+}));
+
+// Full fixer profiles for the manager/admin "Fixer profiles" page: skills, bio,
+// availability, rating and job stats — so staff know who can do what.
+app.get('/api/staff/fixers', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  const rows = await all(`SELECT * FROM users WHERE role='fixer' AND employment_status='active' ORDER BY name ASC`);
+  const fixers = await Promise.all(rows.map(async f => {
+    const av = f.availability || 'available';
+    const active = Number((await get(
+      `SELECT COUNT(*) AS n FROM tasks WHERE assigned_fixer_id = ? AND status IN ('assigned','work_done')`, [f.id])).n) || 0;
+    const completed = Number((await get(
+      `SELECT COUNT(*) AS n FROM tasks WHERE assigned_fixer_id = ? AND status = 'completed'`, [f.id])).n) || 0;
+    return {
+      id: f.id, name: f.name, avatar: fileUrl(f.avatar), bio: f.bio || null,
+      experience: f.experience || null, work_mode: f.work_mode || null,
+      skills: (await all('SELECT category FROM fixer_skills WHERE user_id = ?', [f.id])).map(r => r.category),
+      availability: av, availabilityLabel: availMeta(av).label,
+      rating: await ratingFor(f.id),
+      activeJobs: active, completedJobs: completed,
+    };
+  }));
+  res.json({ fixers });
+}));
+
+// Manager/admin hand-picks a fixer for an approved (open) task. Deliberately NOT
+// restricted to matching skills — the manager knows their fixers and decides.
+app.post('/api/tasks/:id/assign', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  const t = await taskById(+req.params.id);
+  if (!t) return res.status(404).json({ error: 'Task not found.' });
+  if (t.status !== 'open') return res.status(400).json({ error: 'Only an approved, unassigned task can be assigned.' });
+  const fixerId = parseInt((req.body || {}).fixer_id, 10);
+  if (!fixerId) return res.status(400).json({ error: 'Choose a fixer to assign.' });
+  const fixer = await userById(fixerId);
+  if (!fixer || fixer.role !== 'fixer') return res.status(400).json({ error: 'That fixer no longer exists.' });
+  const av = availMeta(fixer.availability);
+  if (!av.assignable) return res.status(409).json({ error: `${fixer.name} is currently ${av.label} and can't take new work. Pick a fixer who's Available.` });
+  const r = await run(`UPDATE tasks SET status='assigned', assigned_fixer_id=?, manager_id=COALESCE(manager_id,?), updated_at=datetime('now')
+                       WHERE id=? AND status='open'`, [fixerId, req.user.id, t.id]);
+  if (!r.rowsAffected) return res.status(409).json({ error: 'This task was just updated — refresh and try again.' });
+  // Taking on a job marks the fixer Busy automatically; they can change it back
+  // themselves whenever they're ready for more.
+  await run(`UPDATE users SET availability='busy' WHERE id=?`, [fixerId]);
+  await event(t.id, req.user.id, `${req.user.name} assigned ${fixer.name} to this task. ${fixer.name} is now marked Busy.`);
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
 /* ==================================================================
-   FIXER
+   FIXER  — fixers no longer browse a shared pool; a manager hand-picks
+   who works each task, so a fixer only ever sees their own assignments.
 ================================================================== */
-app.get('/api/fixer/open', auth, requireRole('fixer'), ah(async (req, res) => {
-  res.json({ tasks: await viewAll(await all(`SELECT * FROM tasks WHERE status='open' ORDER BY created_at ASC`)) });
-}));
 app.get('/api/fixer/mine', auth, requireRole('fixer'), ah(async (req, res) => {
   res.json({ tasks: await viewAll(await all('SELECT * FROM tasks WHERE assigned_fixer_id = ? ORDER BY updated_at DESC', [req.user.id])) });
 }));
 
-app.post('/api/tasks/:id/accept', auth, requireRole('fixer'), ah(async (req, res) => {
-  const t = await taskById(+req.params.id);
-  if (!t) return res.status(404).json({ error: 'Task not found.' });
-  const r = await run(`UPDATE tasks SET status='assigned', assigned_fixer_id=?, updated_at=datetime('now')
-                       WHERE id=? AND status='open' AND assigned_fixer_id IS NULL`, [req.user.id, t.id]);
-  if (!r.rowsAffected) return res.status(409).json({ error: 'Too late — another fixer already took this one.' });
-  await event(t.id, req.user.id, `${req.user.name} accepted the task and will start working on it.`);
-  res.json({ task: await taskView(await taskById(t.id)) });
+// A fixer sets their own availability. Managers see this and can only assign
+// work to a fixer who is "available".
+app.post('/api/fixer/availability', auth, requireRole('fixer'), ah(async (req, res) => {
+  const v = String((req.body || {}).availability || '');
+  if (!AVAILABILITY[v]) return res.status(400).json({ error: 'Pick a valid availability.' });
+  await run(`UPDATE users SET availability=? WHERE id=?`, [v, req.user.id]);
+  res.json({ user: await publicUser(await userById(req.user.id)) });
 }));
 
 app.post('/api/tasks/:id/done', auth, requireRole('fixer'), ah(async (req, res) => {
@@ -453,7 +581,24 @@ app.post('/api/admin/users/:id/role', auth, requireRole('admin'), ah(async (req,
     const c = await get(`SELECT COUNT(*) AS n FROM users WHERE role='admin'`);
     if (Number(c.n) <= 1) return res.status(400).json({ error: 'There must always be at least one admin.' });
   }
-  await run('UPDATE users SET role = ? WHERE id = ?', [role, target.id]);
+  // Setting someone to a real role also reactivates them (in case they were
+  // resigned/dismissed) — the two are one dropdown in the admin UI.
+  await run(`UPDATE users SET role = ?, employment_status = 'active' WHERE id = ?`, [role, target.id]);
+  res.json({ user: await publicUser(await userById(target.id)) });
+}));
+
+// Admin marks a staff member's employment status. "dismissed" / "resigned" keep
+// the record but deactivate the account (no login, removed from the workforce);
+// "active" reinstates them.
+app.post('/api/admin/users/:id/employment', auth, requireRole('admin'), ah(async (req, res) => {
+  const target = await userById(+req.params.id);
+  const { status } = req.body || {};
+  if (!target) return res.status(404).json({ error: 'User not found.' });
+  if (!['active', 'dismissed', 'resigned'].includes(status)) return res.status(400).json({ error: 'Status must be active, dismissed or resigned.' });
+  if (target.role === 'client') return res.status(400).json({ error: 'Employment status is only for staff (fixers, managers, admins).' });
+  if (target.is_primary) return res.status(400).json({ error: 'The primary admin cannot be changed.' });
+  if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot change your own employment status.' });
+  await run('UPDATE users SET employment_status = ? WHERE id = ?', [status, target.id]);
   res.json({ user: await publicUser(await userById(target.id)) });
 }));
 
