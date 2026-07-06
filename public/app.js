@@ -32,6 +32,8 @@ const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 const money = (n) => (n || n === 0) ? `₾${n}` : '—';
+/* the internal "fixer" role is shown to users as "worker" (label only) */
+const roleLabel = (r) => r === 'fixer' ? 'worker' : r;
 /* read-only star row for a 1–5 value */
 function starsRO(n) {
   n = Math.round(n || 0); let s = '';
@@ -121,7 +123,7 @@ function go(view, hash, push = true) {
   if (view === 'dashboard' && !state.user) return go('login', null, push);
   if (view === 'profile' && !state.user) return go('login', null, push);
   if (view === 'fixers' && !(state.user && ['manager', 'admin'].includes(state.user.role))) {
-    toast('Fixer profiles are for managers and admins.');
+    toast('Worker profiles are for managers and admins.');
     return go(state.user ? 'dashboard' : 'login', null, push);
   }
   showView(view);
@@ -164,7 +166,7 @@ function renderNav() {
   } else {
     const first = esc(u.name.split(' ')[0]);
     html = `
-      <a class="who" data-go="profile" title="Your profile">${avatarHTML(u.name, u.avatar, 32)} ${first} <span class="role-tag">${u.role}</span></a>
+      <a class="who" data-go="profile" title="Your profile">${avatarHTML(u.name, u.avatar, 32)} ${first} <span class="role-tag">${roleLabel(u.role)}</span></a>
       <a class="btn btn-ghost btn-sm" data-go="dashboard">Dashboard</a>
       <button class="btn btn-soft btn-sm js-logout">Log out</button>`;
   }
@@ -332,16 +334,24 @@ $('#rf-form').addEventListener('submit', async e => {
     fd.append('bio', f.bio.value); fd.append('experience', f.experience.value); fd.append('work_mode', f.work_mode.value);
     fd.append('skills', JSON.stringify(skills)); fd.append('custom_skills', JSON.stringify(custom_skills));
     if (regFixerAvatar) fd.append('avatar', regFixerAvatar);
+    if (regFixerCv) fd.append('cv', regFixerCv);
     const { user } = await api('/api/auth/register/fixer', { form: fd });
-    setAuth(user); f.reset(); regFixerAvatar = null;
+    setAuth(user); f.reset(); regFixerAvatar = null; regFixerCv = null;
+    const cvLabel = $('#rf-cv-label'); if (cvLabel) cvLabel.textContent = 'Tap to upload your CV';
     $$('#skill-chips .chip').forEach(c => c.classList.remove('on')); goFixerStep(1);
-    toast('Welcome aboard, fixer!'); go('dashboard');
+    toast('Welcome aboard, worker!'); go('dashboard');
   } catch (err) {
     // server errors (e.g. email already registered) live on step 1
     goFixerStep(1); fieldErr(f.email, err.message);
   }
 });
 wireAvatarPicker('rf', f => regFixerAvatar = f);
+/* CV file picker on the fixer registration form */
+let regFixerCv = null;
+$('#rf-cv-input')?.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) { regFixerCv = file; const l = $('#rf-cv-label'); if (l) l.textContent = file.name; }
+});
 
 /* ==================================================================
    POST A PROBLEM FLOW
@@ -419,7 +429,7 @@ function buildSummary(t) {
    DASHBOARDS
 ================================================================== */
 function badge(status) {
-  const labels = { submitted:'Awaiting price', price_countered:'Offer to review', client_countered:'Counter sent', open:'Finding a fixer',
+  const labels = { submitted:'Awaiting price', price_countered:'Offer to review', client_countered:'Counter sent', open:'Finding a worker',
     assigned:'In progress', work_done:'Done — confirm?', completed:'Completed',
     declined:'Declined', cancelled:'Cancelled' };
   return `<span class="badge b-${status}">${labels[status] || status}</span>`;
@@ -473,7 +483,7 @@ document.addEventListener('click', async e => {
       await api(`/api/tasks/${id}/rate`, { body: { rating: val, comment: w.querySelector('.rate-comment').value } });
       toast('Thanks for rating!'); renderDashboard(); return;
     }
-    if (action === 'accept-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'accept' } }); toast('Price accepted — a manager will assign a fixer.'); }
+    if (action === 'accept-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'accept' } }); toast('Price accepted — a manager will assign a worker.'); }
     if (action === 'decline-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'decline' } }); toast('Price declined.'); }
     if (action === 'client-counter') { return openClientCounter(id); }
     if (action === 'counter-reply') { return openCounterReply(id); }
@@ -556,9 +566,9 @@ function clientCard(t) {
   } else if (t.status === 'work_done') {
     inner += `<div class="card-actions"><button class="btn btn-ok btn-sm" data-action="confirm-done">Confirm it's fixed ✓</button></div>`;
   } else if (t.status === 'open') {
-    inner += `<div class="note-box">Price agreed — a fixer will be assigned to you shortly.</div>`;
+    inner += `<div class="note-box">Price agreed — a worker will be assigned to you shortly.</div>`;
   }
-  if (t.fixer) inner += `<div class="meta"><span>Fixer: <b>${esc(t.fixer.name)}</b></span></div>`;
+  if (t.fixer) inner += `<div class="meta"><span>Worker: <b>${esc(t.fixer.name)}</b></span></div>`;
   // Payment: once the job is completed the client pays the agreed price.
   if (t.status === 'completed') {
     inner += t.paid
@@ -600,7 +610,7 @@ async function renderFixer(root) {
   else                            { list = ongoing;     empty = 'No jobs assigned to you yet. A manager will assign work that fits your skills.'; }
   const av = state.user.availability || 'available';
   root.innerHTML = `
-    <div class="dash-head"><div><h1>Fixer dashboard</h1>
+    <div class="dash-head"><div><h1>Worker dashboard</h1>
       <p>Your skills: ${(state.user.skills||[]).map(k => esc(labelOf(k))).join(', ') || '—'} &nbsp;·&nbsp; Rating: ${ratingText(state.user.rating)}</p></div>
       <div class="avail-set">
         <span class="avail-lab">Your status</span>
@@ -646,7 +656,7 @@ function fixerMineCard(t) {
   const rateLine = (t.status === 'completed' && t.rating)
     ? `<div class="rated">Client rated you ${starsRO(t.rating)}${t.rating_comment ? ` — “${esc(t.rating_comment)}”` : ''}</div>` : '';
   const cantHint = t.status === 'assigned'
-    ? `<div class="note-box">Can't complete it? Contact a manager — they can reassign it to another fixer.</div>` : '';
+    ? `<div class="note-box">Can't complete it? Contact a manager — they can reassign it to another worker.</div>` : '';
   return cardShell(t, `${priceBlock(t)}
     <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span><span>${esc(t.urgency||'')}</span></div>
     ${payLine}${rateLine}${cantHint}
@@ -688,7 +698,7 @@ async function renderManager(root) {
   const keys = TASK_GROUPS.map(g => g.key);
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'queue';
   root.innerHTML = `
-    <div class="dash-head"><div><h1>Manager dashboard</h1><p>Review new problems, set fair prices, route to fixers.</p></div>
+    <div class="dash-head"><div><h1>Manager dashboard</h1><p>Review new problems, set fair prices, route to workers.</p></div>
       ${seeFixersBtn()}</div>
     <div class="tabs spread">${groupTabsHtml(groups, tab)}</div>
     <div class="grid">${groupCards(groups, tab)}</div>`;
@@ -712,7 +722,7 @@ function managerAssignCard(t) {
   const note = t.manager_note ? `<div class="note-box"><b>Your note:</b> ${esc(t.manager_note)}</div>` : '';
   return cardShell(t, `${priceBlock(t)}${note}
     <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span><span>${esc(t.urgency||'')}</span></div>
-    <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="assign">Assign a fixer</button></div>`);
+    <div class="card-actions"><button class="btn btn-primary btn-sm" data-action="assign">Assign a worker</button></div>`);
 }
 function managerAllCard(t) {
   const note = (t.status === 'price_countered' && t.manager_note)
@@ -725,7 +735,7 @@ function managerAllCard(t) {
   const release = t.status === 'assigned'
     ? `<div class="card-actions"><button class="btn btn-ghost btn-sm" data-action="release">Reassign</button></div>` : '';
   return cardShell(t, `${priceBlock(t)}${note}
-    <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span>${t.fixer?`<span>Fixer: <b>${esc(t.fixer.name)}</b></span>`:''}</div>
+    <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span>${t.fixer?`<span>Worker: <b>${esc(t.fixer.name)}</b></span>`:''}</div>
     ${payLine}${rateLine}${release}`);
 }
 
@@ -797,13 +807,13 @@ async function doPay(e, id) {
 function confirmRelease(id) {
   modal(`
     <h3>Reassign this task?</h3>
-    <p class="sub">This unassigns the current fixer and moves the job back to “Ready to assign”, so you can hand-pick a different fixer.</p>
+    <p class="sub">This unassigns the current worker and moves the job back to “Ready to assign”, so you can hand-pick a different worker.</p>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" type="button" id="release-yes">Okay</button>
     </div>`);
   $('#release-yes').onclick = async () => {
-    try { await api(`/api/tasks/${id}/release`, { method: 'POST' }); closeModal(); toast('Unassigned — ready to assign a different fixer.'); renderDashboard(); }
+    try { await api(`/api/tasks/${id}/release`, { method: 'POST' }); closeModal(); toast('Unassigned — ready to assign a different worker.'); renderDashboard(); }
     catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
   };
 }
@@ -829,7 +839,7 @@ function assignRowHTML(f) {
    alphabetically in a searchable dropdown; matching-skill fixers get a tag, and
    only fixers whose status is "Available" can actually be chosen. */
 async function openAssign(id) {
-  modal(`<h3>Assign a fixer</h3><p class="sub">${loadingBox('Loading your fixers…')}</p>`);
+  modal(`<h3>Assign a worker</h3><p class="sub">${loadingBox('Loading your workers…')}</p>`);
   let fixers, task;
   try {
     const [fr, tr] = await Promise.all([api('/api/manager/fixers'), api('/api/manager/all')]);
@@ -837,20 +847,20 @@ async function openAssign(id) {
     task = tr.tasks.find(t => String(t.id) === String(id));
   } catch (err) { closeModal(); toast(err.message, true); return; }
   if (!task) { closeModal(); toast('That task is no longer available.', true); renderDashboard(); return; }
-  if (!fixers.length) { closeModal(); toast('No fixers exist yet to assign.', true); return; }
+  if (!fixers.length) { closeModal(); toast('No workers exist yet to assign.', true); return; }
   fixers.sort((a, b) => a.name.localeCompare(b.name));       // alphabetical
   const availCount = fixers.filter(f => f.assignable).length;
   modal(`
-    <h3>Assign a fixer</h3>
-    <p class="sub">Pick who should handle this task. Only fixers marked <b>Available</b> can be assigned (${availCount} right now).</p>
+    <h3>Assign a worker</h3>
+    <p class="sub">Pick who should handle this task. Only workers marked <b>Available</b> can be assigned (${availCount} right now).</p>
     <div class="form-error" id="assign-error"></div>
     <div class="combo">
-      <input class="input" id="assign-search" placeholder="Search fixers by name or surname…" autocomplete="off">
+      <input class="input" id="assign-search" placeholder="Search workers by name or surname…" autocomplete="off">
       <div class="assign-list" id="assign-results"></div>
     </div>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" type="button" id="assign-yes">Assign fixer</button>
+      <button class="btn btn-primary" type="button" id="assign-yes">Assign worker</button>
     </div>`);
   const results = $('#assign-results');
   const search = $('#assign-search');
@@ -862,7 +872,7 @@ async function openAssign(id) {
       !tokens.length || tokens.every(tk => f.name.toLowerCase().split(/\s+/).some(w => w.startsWith(tk)) || f.name.toLowerCase().includes(tk)));
     results.innerHTML = shown.length
       ? shown.map(f => assignRowHTML(f)).join('')
-      : `<div class="assign-none">No fixer matches “${esc(search.value)}”.</div>`;
+      : `<div class="assign-none">No worker matches “${esc(search.value)}”.</div>`;
     if (selected) { const r = results.querySelector(`input[value="${selected}"]`); if (r && !r.disabled) r.checked = true; }
   };
   results.addEventListener('change', e => { if (e.target.name === 'assign-fixer') selected = e.target.value; });
@@ -871,17 +881,17 @@ async function openAssign(id) {
   search.focus();
   $('#assign-yes').onclick = async () => {
     const err = $('#assign-error');
-    if (!selected) { err.textContent = 'Search and choose an available fixer first.'; err.classList.add('show'); return; }
+    if (!selected) { err.textContent = 'Search and choose an available worker first.'; err.classList.add('show'); return; }
     try {
       await api(`/api/tasks/${id}/assign`, { body: { fixer_id: selected } });
-      closeModal(); toast('Fixer assigned. 🛠️'); renderDashboard();
+      closeModal(); toast('Worker assigned. 🛠️'); renderDashboard();
     } catch (e) { if (err) { err.textContent = e.message; err.classList.add('show'); } else toast(e.message, true); }
   };
 }
 function confirmCancel(id) {
   modal(`
     <h3>Cancel this request?</h3>
-    <p class="sub">Only do this if you no longer need help (for example, you fixed it yourself). If a fixer already took the job, it will be removed from their list.</p>
+    <p class="sub">Only do this if you no longer need help (for example, you fixed it yourself). If a worker already took the job, it will be removed from their list.</p>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Keep it</button>
       <button class="btn btn-danger" type="button" id="cancel-yes">Yes, cancel it</button>
@@ -983,7 +993,7 @@ async function openCounterReply(id) {
     try { await api(`/api/tasks/${id}/counter-reply`, { body }); closeModal(); toast(okMsg); renderDashboard(); }
     catch (e) { if (err) { err.textContent = e.message; err.classList.add('show'); } else toast(e.message, true); }
   };
-  $('#cr-accept').onclick = () => send({ action: 'accept' }, 'Accepted — ready to assign a fixer.');
+  $('#cr-accept').onclick = () => send({ action: 'accept' }, 'Accepted — ready to assign a worker.');
   $('#cr-decline').onclick = () => send({ action: 'decline' }, 'Counter declined. Task closed.');
   $('#cr-counter').onclick = () => {
     const price = parseInt($('#cr-price').value, 10);
@@ -1034,7 +1044,7 @@ function adminPeople(users) {
       const st = u.employment_status || 'active';
       const curSel = st !== 'active' ? st : u.role;   // show resigned/dismissed if inactive
       control = `<select class="input role-select ${st !== 'active' ? 'emp-danger' : ''}" data-uid="${u.id}" data-current="${curSel}" data-name="${esc(u.name)}" style="padding:.34rem 2rem .46rem .7rem;width:auto;font-size:.85rem">
-        ${['fixer','manager','admin'].map(r => `<option value="${r}" ${curSel===r?'selected':''}>${r}</option>`).join('')}
+        ${['fixer','manager','admin'].map(r => `<option value="${r}" ${curSel===r?'selected':''}>${roleLabel(r)}</option>`).join('')}
         <option class="opt-danger" value="resigned" ${curSel==='resigned'?'selected':''}>resigned</option>
         <option class="opt-danger" value="dismissed" ${curSel==='dismissed'?'selected':''}>dismissed</option>
       </select>`;
@@ -1042,31 +1052,32 @@ function adminPeople(users) {
     const rating = (u.role === 'fixer' && u.rating && u.rating.count)
       ? `<span class="rating-avg">★ ${u.rating.avg.toFixed(1)}</span> <span style="color:var(--muted)">(${u.rating.count})</span>` : '—';
     return `<tr>
-      <td><span class="cell-user">${avatarHTML(u.name, u.avatar, 28)} ${esc(u.name)}</span></td><td>${esc(u.email)}</td>
-      <td><span class="role-chip rc-${u.role}">${u.role}</span></td>
-      <td>${rating}</td>
-      <td>${u.role==='fixer' ? (u.skills||[]).map(k=>esc(labelOf(k))).join(', ')||'—' : '—'}</td>
-      <td>${control}</td></tr>`;
+      <td data-label="Name"><span class="cell-user">${avatarHTML(u.name, u.avatar, 28)} ${esc(u.name)}</span></td>
+      <td data-label="Email">${esc(u.email)}</td>
+      <td data-label="Role"><span class="role-chip rc-${u.role}">${roleLabel(u.role)}</span></td>
+      <td data-label="Rating">${rating}</td>
+      <td data-label="Qualifications">${u.role==='fixer' ? (u.skills||[]).map(k=>esc(labelOf(k))).join(', ')||'—' : '—'}</td>
+      <td data-label="Change role">${control}</td></tr>`;
   }).join('');
   return `
     <div class="stat-row">
       <div class="stat"><div class="n">${counts.client||0}</div><div class="l">Clients</div></div>
-      <div class="stat"><div class="n">${counts.fixer||0}</div><div class="l">Fixers</div></div>
+      <div class="stat"><div class="n">${counts.fixer||0}</div><div class="l">Workers</div></div>
       <div class="stat"><div class="n">${counts.manager||0}</div><div class="l">Managers</div></div>
       <div class="stat"><div class="n">${counts.admin||0}</div><div class="l">Admins</div></div>
     </div>
     <div class="people-bar">
       <label class="people-filter">Show
         <select class="input" id="people-filter">
-          ${[['all','Everyone'],['admin','Admins'],['manager','Managers'],['fixer','Fixers'],['client','Clients']]
+          ${[['all','Everyone'],['admin','Admins'],['manager','Managers'],['fixer','Workers'],['client','Clients']]
             .map(([v, l]) => `<option value="${v}" ${filter === v ? 'selected' : ''}>${l}</option>`).join('')}
           ${[['resigned','Resigned'],['dismissed','Dismissed']]
             .map(([v, l]) => `<option class="opt-danger" value="${v}" ${filter === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </label>
     </div>
-    <table class="users"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Rating</th><th>Qualifications</th><th>Change role</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.5rem">No one with that role.</td></tr>`}</tbody></table>`;
+    <div class="table-wrap"><table class="users"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Rating</th><th>Qualifications</th><th>Change role</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.5rem">No one with that role.</td></tr>`}</tbody></table></div>`;
 }
 function confirmEmployment(id, name, status) {
   const copy = {
@@ -1164,21 +1175,21 @@ function reviewCard(r) {
 function seeFixersBtn() {
   return `<button class="btn btn-primary" data-go="fixers">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Fixer profiles</button>`;
+    Worker profiles</button>`;
 }
 async function renderFixers() {
   const root = $('#fixers-root');
-  root.innerHTML = loadingBox('Loading fixer profiles…');
+  root.innerHTML = loadingBox('Loading worker profiles…');
   let data;
-  try { data = await api('/api/staff/fixers'); } catch { root.innerHTML = emptyBox('Could not load fixer profiles.'); return; }
+  try { data = await api('/api/staff/fixers'); } catch { root.innerHTML = emptyBox('Could not load worker profiles.'); return; }
   const fixers = data.fixers;
   const head = `<div class="dash-head fixers-head"><div>
-    <h1>Fixer profiles</h1>
+    <h1>Worker profiles</h1>
     <p>Who can do what — skills, availability, ratings and stats to help you assign the right person.</p>
   </div></div>`;
   const body = fixers.length
     ? `<div class="fixer-grid">${fixers.map(fixerProfileCard).join('')}</div>`
-    : emptyBox('No fixers have joined yet.');
+    : emptyBox('No workers have joined yet.');
   root.innerHTML = head + body;
 }
 function fixerProfileCard(f) {
@@ -1199,6 +1210,7 @@ function fixerProfileCard(f) {
     <div class="fp-meta">
       ${f.experience ? `<span class="fp-tag">🧰 ${esc(f.experience)} experience</span>` : ''}
       ${f.work_mode ? `<span class="fp-tag">📍 ${esc(f.work_mode)}</span>` : ''}
+      ${f.cv ? `<a class="fp-tag fp-cv" href="${f.cv}" target="_blank" rel="noopener">📄 View CV ↗</a>` : ''}
     </div>
     <div class="fp-group">
       <div class="fp-skills-lab">Can fix</div>
@@ -1225,7 +1237,7 @@ function renderProfile() {
   const modeOpts = ['Remote only', 'In person only', 'Remote & in person'];
   root.innerHTML = `
     <h2 class="flow-title">Your profile</h2>
-    <p class="flow-sub">Update your details — you're signed in as a <b>${esc(u.role)}</b>.</p>
+    <p class="flow-sub">Update your details — you're signed in as a <b>${esc(roleLabel(u.role))}</b>.</p>
     ${isFixer ? `<p class="flow-sub" style="margin-top:.3rem">Your rating: ${ratingText(u.rating)}</p>` : ''}
     <div style="margin-top:1rem"></div>
     <div class="avatar-pick">
@@ -1250,6 +1262,14 @@ function renderProfile() {
         </div>
         <label class="field"><span class="lab">What you can fix</span><div class="qchips" id="profile-skills">${chips}</div></label>
         <label class="field"><span class="lab">Other speciality <span class="opt">comma-separate for more</span></span><input class="input" id="profile-custom-skills" value="${esc(customSkills.join(', '))}"></label>
+        <div class="field"><span class="lab">CV / résumé</span>
+          <label class="upload" id="pf-cv-drop">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            <div><strong id="pf-cv-label">${u.cv ? 'Replace your CV' : 'Upload your CV'}</strong> <span class="cv-hint">PDF or Word, up to 8 MB</span></div>
+            <input type="file" id="pf-cv-input" accept=".pdf,.doc,.docx,application/pdf" hidden>
+          </label>
+          ${u.cv ? `<a class="cv-link" href="${u.cv}" target="_blank" rel="noopener">📄 View current CV ↗</a>` : ''}
+        </div>
       ` : ''}
       <hr class="profile-sep">
       <div class="profile-sec-title">Change password</div>
@@ -1267,6 +1287,12 @@ function renderProfile() {
   wireAvatarPicker('pf', async file => {
     const fd = new FormData(); fd.append('avatar', file);
     try { const { user } = await api('/api/profile/avatar', { form: fd }); setAuth(user); toast('Photo updated.'); }
+    catch (err) { toast(err.message, true); }
+  });
+  $('#pf-cv-input')?.addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const fd = new FormData(); fd.append('cv', file);
+    try { const { user } = await api('/api/profile/cv', { form: fd }); setAuth(user); toast('CV updated.'); renderProfile(); }
     catch (err) { toast(err.message, true); }
   });
 }

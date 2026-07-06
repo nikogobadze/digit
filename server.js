@@ -53,7 +53,10 @@ if (!useBlob) { try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch {} 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
-  fileFilter: (req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+  // "cv" fields accept documents (PDF/Word); everything else must be an image.
+  fileFilter: (req, file, cb) => cb(null, file.fieldname === 'cv'
+    ? /pdf|msword|officedocument|rtf|^text\/plain/i.test(file.mimetype)
+    : /^image\//.test(file.mimetype)),
 });
 async function saveUpload(file) {
   const ext = (path.extname(file.originalname) || '.jpg').toLowerCase().slice(0, 8);
@@ -87,6 +90,7 @@ async function publicUser(u) {
     hourly_rate: u.hourly_rate || null, work_mode: u.work_mode || null,
     is_primary: !!u.is_primary, skills,
     avatar: fileUrl(u.avatar),
+    cv: u.role === 'fixer' ? fileUrl(u.cv) : undefined,
     employment_status: u.employment_status || 'active',
     availability: u.role === 'fixer' ? (u.availability || 'available') : undefined,
     rating: u.role === 'fixer' ? await ratingFor(u.id) : undefined,
@@ -166,6 +170,7 @@ function passwordError(pw) {
   return null;
 }
 const setAvatar = (ref, id) => run('UPDATE users SET avatar=? WHERE id=?', [ref, id]);
+const setCv = (ref, id) => run('UPDATE users SET cv=? WHERE id=?', [ref, id]);
 
 /* ==================================================================
    PUBLIC
@@ -209,7 +214,7 @@ app.post('/api/auth/register/client', upload.single('avatar'), ah(async (req, re
   res.json({ user: await publicUser(user) });
 }));
 
-app.post('/api/auth/register/fixer', upload.single('avatar'), ah(async (req, res) => {
+app.post('/api/auth/register/fixer', upload.fields([{ name: 'avatar', maxCount: 1 }, { name: 'cv', maxCount: 1 }]), ah(async (req, res) => {
   const { name, email, password, bio, experience, work_mode } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
   const pe = passwordError(password); if (pe) return res.status(400).json({ error: pe });
@@ -223,7 +228,9 @@ app.post('/api/auth/register/fixer', upload.single('avatar'), ah(async (req, res
   const r = await run(`INSERT INTO users (role,name,email,password_hash,bio,experience,work_mode) VALUES ('fixer',?,?,?,?,?,?) RETURNING id`,
     [name.trim(), email.toLowerCase().trim(), bcrypt.hashSync(password, 10), bio || null, experience || null, work_mode || null]);
   const id = Number(r.rows[0].id);
-  if (req.file) await setAvatar(await saveUpload(req.file), id);
+  const files = req.files || {};
+  if (files.avatar && files.avatar[0]) await setAvatar(await saveUpload(files.avatar[0]), id);
+  if (files.cv && files.cv[0]) await setCv(await saveUpload(files.cv[0]), id);
   for (const s of finalSkills) await run('INSERT OR IGNORE INTO fixer_skills (user_id,category) VALUES (?,?)', [id, s]);
   const user = await userById(id);
   setAuthCookie(res, user);
@@ -233,6 +240,13 @@ app.post('/api/auth/register/fixer', upload.single('avatar'), ah(async (req, res
 app.post('/api/profile/avatar', auth, upload.single('avatar'), ah(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Please choose an image.' });
   await setAvatar(await saveUpload(req.file), req.user.id);
+  res.json({ user: await publicUser(await userById(req.user.id)) });
+}));
+
+// A fixer uploads / replaces their CV (PDF or Word doc).
+app.post('/api/profile/cv', auth, requireRole('fixer'), upload.single('cv'), ah(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Please choose a CV file (PDF or Word).' });
+  await setCv(await saveUpload(req.file), req.user.id);
   res.json({ user: await publicUser(await userById(req.user.id)) });
 }));
 
@@ -338,7 +352,7 @@ app.post('/api/tasks/:id/respond', auth, requireRole('client'), ah(async (req, r
   const note = ((req.body || {}).note || '').trim().slice(0, 300) || null;
   if (action === 'accept') {
     await run(`UPDATE tasks SET status='open', agreed_price=?, updated_at=datetime('now') WHERE id=?`, [t.counter_price, t.id]);
-    await event(t.id, req.user.id, `Client accepted the price of ₾${t.counter_price}. Ready for a manager to assign a fixer.`);
+    await event(t.id, req.user.id, `Client accepted the price of ₾${t.counter_price}. Ready for a manager to assign a worker.`);
   } else if (action === 'counter') {
     const price = parseInt((req.body || {}).price, 10);
     if (!(price >= 0)) return res.status(400).json({ error: 'Enter the price you can offer.' });
@@ -378,14 +392,14 @@ app.post('/api/tasks/:id/rate', auth, requireRole('client'), ah(async (req, res)
   const t = await taskById(+req.params.id);
   if (!t || t.client_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
   if (t.status !== 'completed') return res.status(400).json({ error: 'You can only rate a completed job.' });
-  if (!t.assigned_fixer_id) return res.status(400).json({ error: 'There is no fixer to rate.' });
+  if (!t.assigned_fixer_id) return res.status(400).json({ error: 'There is no worker to rate.' });
   if (t.rating) return res.status(400).json({ error: 'You have already rated this job.' });
   const rating = parseInt((req.body || {}).rating, 10);
   if (!(rating >= 1 && rating <= 5)) return res.status(400).json({ error: 'Pick a rating from 1 to 5 stars.' });
   const comment = ((req.body || {}).comment || '').trim().slice(0, 300) || null;
   await run(`UPDATE tasks SET rating=?, rating_comment=?, rated_at=datetime('now'), updated_at=datetime('now') WHERE id=?`, [rating, comment, t.id]);
   const fixer = await userById(t.assigned_fixer_id);
-  await event(t.id, req.user.id, `Client rated ${fixer ? fixer.name : 'the fixer'} ${'★'.repeat(rating)} (${rating}/5)${comment ? `: ${comment}` : ''}.`);
+  await event(t.id, req.user.id, `Client rated ${fixer ? fixer.name : 'the worker'} ${'★'.repeat(rating)} (${rating}/5)${comment ? `: ${comment}` : ''}.`);
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
@@ -397,7 +411,7 @@ app.post('/api/tasks/:id/cancel', auth, requireRole('client'), ah(async (req, re
   const hadFixer = !!t.assigned_fixer_id;
   await run(`UPDATE tasks SET status='cancelled', updated_at=datetime('now') WHERE id=?`, [t.id]);
   await event(t.id, req.user.id, hadFixer
-    ? 'Client cancelled the request — they no longer need help. It has been removed from the fixer\'s jobs.'
+    ? 'Client cancelled the request — they no longer need help. It has been removed from the worker\'s jobs.'
     : 'Client cancelled the request — they no longer need help.');
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
@@ -441,7 +455,7 @@ app.post('/api/tasks/:id/counter-reply', auth, requireRole('manager', 'admin'), 
   const note = ((req.body || {}).manager_note || '').trim().slice(0, 300) || null;
   if (action === 'accept') {
     await run(`UPDATE tasks SET status='open', agreed_price=?, manager_id=COALESCE(manager_id,?), updated_at=datetime('now') WHERE id=?`, [t.counter_price, req.user.id, t.id]);
-    await event(t.id, req.user.id, `Manager accepted the client's price of ₾${t.counter_price}. Ready to assign a fixer.`);
+    await event(t.id, req.user.id, `Manager accepted the client's price of ₾${t.counter_price}. Ready to assign a worker.`);
   } else if (action === 'counter') {
     const price = parseInt((req.body || {}).price, 10);
     if (!(price >= 0)) return res.status(400).json({ error: 'Enter your counter price.' });
@@ -465,7 +479,7 @@ app.post('/api/tasks/:id/release', auth, requireRole('manager', 'admin'), ah(asy
   if (t.status !== 'assigned') return res.status(400).json({ error: 'Only an in-progress task can be released.' });
   const prev = t.assigned_fixer_id ? await userById(t.assigned_fixer_id) : null;
   await run(`UPDATE tasks SET status='open', assigned_fixer_id=NULL, updated_at=datetime('now') WHERE id=?`, [t.id]);
-  await event(t.id, req.user.id, `${req.user.name} unassigned the task${prev ? ` from ${prev.name}` : ''}. Ready to assign a different fixer.`);
+  await event(t.id, req.user.id, `${req.user.name} unassigned the task${prev ? ` from ${prev.name}` : ''}. Ready to assign a different worker.`);
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
@@ -502,7 +516,7 @@ app.get('/api/staff/fixers', auth, requireRole('manager', 'admin'), ah(async (re
     const completed = Number((await get(
       `SELECT COUNT(*) AS n FROM tasks WHERE assigned_fixer_id = ? AND status = 'completed'`, [f.id])).n) || 0;
     return {
-      id: f.id, name: f.name, avatar: fileUrl(f.avatar), bio: f.bio || null,
+      id: f.id, name: f.name, avatar: fileUrl(f.avatar), cv: fileUrl(f.cv), bio: f.bio || null,
       experience: f.experience || null, work_mode: f.work_mode || null,
       skills: (await all('SELECT category FROM fixer_skills WHERE user_id = ?', [f.id])).map(r => r.category),
       availability: av, availabilityLabel: availMeta(av).label,
@@ -520,11 +534,11 @@ app.post('/api/tasks/:id/assign', auth, requireRole('manager', 'admin'), ah(asyn
   if (!t) return res.status(404).json({ error: 'Task not found.' });
   if (t.status !== 'open') return res.status(400).json({ error: 'Only an approved, unassigned task can be assigned.' });
   const fixerId = parseInt((req.body || {}).fixer_id, 10);
-  if (!fixerId) return res.status(400).json({ error: 'Choose a fixer to assign.' });
+  if (!fixerId) return res.status(400).json({ error: 'Choose a worker to assign.' });
   const fixer = await userById(fixerId);
-  if (!fixer || fixer.role !== 'fixer') return res.status(400).json({ error: 'That fixer no longer exists.' });
+  if (!fixer || fixer.role !== 'fixer') return res.status(400).json({ error: 'That worker no longer exists.' });
   const av = availMeta(fixer.availability);
-  if (!av.assignable) return res.status(409).json({ error: `${fixer.name} is currently ${av.label} and can't take new work. Pick a fixer who's Available.` });
+  if (!av.assignable) return res.status(409).json({ error: `${fixer.name} is currently ${av.label} and can't take new work. Pick a worker who's Available.` });
   const r = await run(`UPDATE tasks SET status='assigned', assigned_fixer_id=?, manager_id=COALESCE(manager_id,?), updated_at=datetime('now')
                        WHERE id=? AND status='open'`, [fixerId, req.user.id, t.id]);
   if (!r.rowsAffected) return res.status(409).json({ error: 'This task was just updated — refresh and try again.' });
@@ -573,7 +587,7 @@ app.post('/api/admin/users/:id/role', auth, requireRole('admin'), ah(async (req,
   const target = await userById(+req.params.id);
   const { role } = req.body || {};
   if (!target) return res.status(404).json({ error: 'User not found.' });
-  if (!['fixer', 'manager', 'admin'].includes(role)) return res.status(400).json({ error: 'Role must be fixer, manager or admin.' });
+  if (!['fixer', 'manager', 'admin'].includes(role)) return res.status(400).json({ error: 'Role must be worker, manager or admin.' });
   if (target.role === 'client') return res.status(400).json({ error: 'Clients cannot be promoted into staff roles.' });
   if (target.is_primary) return res.status(400).json({ error: 'The primary admin cannot be changed.' });
   if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot change your own role.' });
@@ -595,7 +609,7 @@ app.post('/api/admin/users/:id/employment', auth, requireRole('admin'), ah(async
   const { status } = req.body || {};
   if (!target) return res.status(404).json({ error: 'User not found.' });
   if (!['active', 'dismissed', 'resigned'].includes(status)) return res.status(400).json({ error: 'Status must be active, dismissed or resigned.' });
-  if (target.role === 'client') return res.status(400).json({ error: 'Employment status is only for staff (fixers, managers, admins).' });
+  if (target.role === 'client') return res.status(400).json({ error: 'Employment status is only for staff (workers, managers, admins).' });
   if (target.is_primary) return res.status(400).json({ error: 'The primary admin cannot be changed.' });
   if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot change your own employment status.' });
   await run('UPDATE users SET employment_status = ? WHERE id = ?', [status, target.id]);

@@ -295,16 +295,24 @@
   .field-err.show{display:block}
   .field-hint{display:block;font-size:.84rem;color:var(--muted);margin-top:.35rem}
   .qchips{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:.5rem}
-  .upload{border:2px dashed var(--silver);border-radius:var(--r-sm);padding:.9rem 1rem;text-align:center;color:var(--muted);transition:all .18s;cursor:pointer;background:var(--bg-soft);font-size:.92rem}
+  .upload{display:block;border:2px dashed var(--silver);border-radius:var(--r-sm);padding:.9rem 1rem;text-align:center;color:var(--muted);transition:all .18s;cursor:pointer;background:var(--bg-soft);font-size:.92rem}
   .upload:hover{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-deep)}
   .upload svg{width:22px;height:22px;margin:0 auto .35rem;color:var(--violet)}
   .upload strong{color:var(--ink);font-weight:700}
   .upload input{display:none}
+  .cv-hint{color:var(--muted);font-weight:500}
+  .cv-link{display:inline-block;margin-top:.55rem;font-weight:600;font-size:.88rem;color:var(--violet-deep)}
+  .cv-link:hover{text-decoration:underline}
+  .fp-cv{color:var(--violet-deep);text-decoration:none}
+  .fp-cv:hover{background:var(--violet-soft);border-color:var(--violet-100)}
   .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.5rem;margin-top:1rem}
   .thumbs:empty{display:none}
   .thumbs .tb{position:relative;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);aspect-ratio:1}
   .thumbs .tb img{width:100%;height:100%;object-fit:cover}
-  .thumbs .tb .rm{position:absolute;top:.25rem;right:.25rem;background:rgba(27,21,37,.82);color:#fff;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.9rem;cursor:pointer;border:none;line-height:1}
+  .thumbs .tb .rm{position:absolute;top:.3rem;right:.3rem;background:rgba(15,15,25,.78);color:#fff;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;font-size:1.05rem;cursor:pointer;border:2px solid rgba(255,255,255,.9);line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:background .15s,transform .15s}
+  .thumbs .tb .rm:hover{background:var(--bad);transform:scale(1.12)}
+  .thumbs .tb::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .15s;pointer-events:none}
+  .thumbs .tb:hover::after{background:rgba(0,0,0,.12)}
   .flow-actions{display:flex;gap:.8rem;margin-top:1.8rem}
   .flow-actions .btn{flex:1;justify-content:center}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
@@ -527,7 +535,7 @@
     .preview{max-width:420px;margin:0 auto}.steps{grid-template-columns:1fr}.step .line{display:none}
     .cats{grid-template-columns:1fr 1fr}.fixer-band{grid-template-columns:1fr;padding:2.2rem}
     .two{grid-template-columns:1fr}.foot-grid{flex-direction:column}
-    table.users{display:block;overflow-x:auto;white-space:nowrap}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
     /* mobile nav: replace desktop links + auth with a hamburger menu */
     .nav-toggle{display:inline-flex}
     .nav-cta{display:none}
@@ -561,6 +569,21 @@
   @media(max-width:380px){
     .contact-cards{grid-template-columns:1fr}
     .hero h1{font-size:1.95rem}
+  }
+  /* admin People table -> stacked cards on phones (labels from data-label) */
+  @media(max-width:640px){
+    .table-wrap{overflow:visible}
+    table.users{border:none;background:transparent}
+    table.users thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    table.users tr{display:block;background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);margin-bottom:.8rem;padding:.9rem 1.1rem}
+    table.users td{display:flex;justify-content:space-between;align-items:center;gap:1rem;border:none;padding:.42rem 0;font-size:.92rem;width:auto}
+    table.users td::before{content:attr(data-label);font-weight:600;color:var(--muted);font-size:.8rem;flex-shrink:0}
+    table.users td[data-label="Name"]{padding:0 0 .55rem;margin-bottom:.5rem;border-bottom:1px solid var(--line);font-size:1.02rem;font-weight:700}
+    table.users td[data-label="Name"]::before{display:none}
+    table.users td[data-label="Qualifications"]{width:auto;flex-direction:column;align-items:flex-start;gap:.25rem;white-space:normal}
+    table.users td[data-label="Change role"]{padding-top:.55rem}
+    table.users td[data-label="Change role"] .input{width:auto}
+    table.users .cell-user{width:100%}
   }
   @media(max-width:600px){#view-registerClient .back,#view-registerFixer .back,#view-post .back,#view-login .back,#view-about .back,#view-profile .back{position:static}#view-registerClient .flow-card,#view-registerFixer .flow-card,#view-post .flow-card,#view-login .flow-card,#view-profile .flow-card{margin-top:1.5rem}#view-about .page-body{margin-top:1.5rem}}
   @media(max-width:480px){.cats{grid-template-columns:1fr}.flow-card{padding:1.5rem}.plabel{display:none}}
@@ -626,7 +649,7 @@
       </div>
       <div class="preview">
         <div class="float-tag ft1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg> Avg. reply in 12 min</div>
-        <div class="float-tag ft2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Verified fixers only</div>
+        <div class="float-tag ft2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Verified workers only</div>
         <div class="pcard">
           <div class="phead"><span class="ptitle">Post your problem</span><span class="pstep">3 clicks</span></div>
           <div class="chiprow marquee">
@@ -638,7 +661,7 @@
           <div class="fakefield">"My laptop shows a blue screen every time I open it…"</div>
           <div class="pbar">
             <span class="picon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L7 20"/></svg></span>
-            <span class="pbtn" data-go="registerClient" role="button" tabindex="0">Send to a fixer</span>
+            <span class="pbtn" data-go="registerClient" role="button" tabindex="0">Send to a worker</span>
           </div>
         </div>
       </div>
@@ -661,7 +684,7 @@
           <h3>A manager checks it</h3><p>A real person reviews your problem, agrees on a fair price, and explains it in plain words.</p></div>
         <div class="step"><span class="num mono">03</span><span class="line"></span>
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-2 2-2-2"/></svg></div>
-          <h3>A fixer takes it</h3><p>The right specialist picks up your job and gets to work — remotely or in person.</p></div>
+          <h3>A worker takes it</h3><p>The right specialist picks up your job and gets to work — remotely or in person.</p></div>
         <div class="step"><span class="num mono">04</span><span class="line"></span>
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>
           <h3>You confirm</h3><p>Once it's solved, you confirm it's done. Simple.</p></div>
@@ -673,7 +696,7 @@
     <div class="wrap">
       <div class="sec-head">
         <span class="eyebrow"><span class="dot"></span> Common Problems</span>
-        <h2>What can a fixer help with?</h2>
+        <h2>What can a worker help with?</h2>
         <p>Tap the one that sounds like your problem — it pre-fills the form for you.</p>
       </div>
       <div class="cats" id="home-cats"><!-- filled by app.js --></div>
@@ -727,7 +750,7 @@
         <label class="field"><span class="lab">Password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
         <button class="btn btn-primary btn-block btn-lg" type="submit">Log in</button>
       </form>
-      <p class="alt-line">New here? <a data-go="registerClient">Create a client account</a> · <a data-go="registerFixer">Join as a fixer</a></p>
+      <p class="alt-line">New here? <a data-go="registerClient">Create a client account</a> · <a data-go="registerFixer">Join as a worker</a></p>
     </div>
   </div></div>
 </main>
@@ -786,7 +809,7 @@
       <form id="rf-form" novalidate>
         <!-- step 1 -->
         <div class="fstep active" data-pstep="1">
-          <h2 class="flow-title">Join as a fixer</h2>
+          <h2 class="flow-title">Join as a worker</h2>
           <p class="flow-sub">Tell us what you're great at. You can change all of this later.</p>
           <div style="margin-top:.7rem"></div>
           <div class="avatar-pick">
@@ -820,6 +843,13 @@
               <select class="input" name="experience"><option>Less than 1</option><option>1–3 years</option><option>3–6 years</option><option>6+ years</option></select></label>
             <label class="field"><span class="lab">How do you work?</span>
               <select class="input" name="work_mode"><option>Remote only</option><option>In person only</option><option>Remote &amp; in person</option></select></label>
+          </div>
+          <div class="field"><span class="lab">Your CV / résumé <span class="opt">optional — PDF or Word</span></span>
+            <label class="upload" id="rf-cv-drop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+              <div><strong id="rf-cv-label">Tap to upload your CV</strong> <span class="cv-hint">PDF or Word, up to 8 MB</span></div>
+              <input type="file" id="rf-cv-input" accept=".pdf,.doc,.docx,application/pdf" hidden>
+            </label>
           </div>
           <div class="two">
             <label class="field"><span class="lab">Choose a password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
@@ -894,7 +924,7 @@
         <div class="done-wrap">
           <div class="done-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
           <h2>Your problem is with a manager.</h2>
-          <p>A manager is reviewing it now. They'll confirm the price (or suggest a fair one) and then a qualified fixer takes over.</p>
+          <p>A manager is reviewing it now. They'll confirm the price (or suggest a fair one) and then a qualified worker takes over.</p>
           <div class="summary" id="summary"></div>
           <button class="btn btn-primary btn-lg" data-go="dashboard">Go to my problems</button>
         </div>
@@ -944,7 +974,7 @@
     <ul>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>No jargon.</b> Tap what sounds like your problem, type a sentence, optionally add a photo. That's it.</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>A human in the loop.</b> A manager reviews every request, agrees on a fair price, and explains it in words anyone can understand.</span></li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>The right specialist.</b> Approved jobs go out to qualified fixers, and the first available one picks it up.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>The right specialist.</b> Approved jobs go out to qualified workers, and the first available one picks it up.</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>You stay in control.</b> Nothing is final until you confirm the work is done.</span></li>
     </ul>
     <p>From a blue screen to a brand-new website, Digit connects everyday people with IT pros who actually want to help.</p>
@@ -955,13 +985,13 @@
     <h2 id="trust-sec">Trust &amp; safety</h2>
     <p class="page-lead" style="margin-bottom:1.2rem">We want Digit to feel safe for people who aren't sure who to trust with their tech.</p>
     <ul>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Every job is reviewed by a manager.</b> A real person checks your request before any fixer sees it.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Every job is reviewed by a manager.</b> A real person checks your request before any worker sees it.</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Clear, explained pricing.</b> You name your budget; if the manager suggests a different price, they tell you exactly why. You can accept or decline.</span></li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Qualified fixers only.</b> Jobs are matched to specialists, and a fixer must accept before starting.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Qualified workers only.</b> Jobs are matched to specialists, and a worker must accept before starting.</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>You confirm completion.</b> A job is only marked done after you say it's fixed.</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Cancel anytime.</b> Fixed it yourself? You can call off a request before it's completed.</span></li>
     </ul>
-    <p>We only collect what's needed to solve your problem — your contact details and what you tell us about the issue. Photos you upload are used solely to help a fixer understand the problem.</p>
+    <p>We only collect what's needed to solve your problem — your contact details and what you tell us about the issue. Photos you upload are used solely to help a worker understand the problem.</p>
 
     <hr style="border:none;border-top:1px solid var(--line);margin:2.6rem 0">
 
@@ -995,7 +1025,7 @@
       </div>
       <div class="foot-links">
         <div class="foot-col"><h4>Get help</h4><a data-go="post">Post a problem</a><a data-go="home" data-hash="cats">Common Problems</a><a data-go="home" data-hash="how">How it works</a><a data-go="reviews">Reviews</a></div>
-        <div class="foot-col"><h4>For fixers</h4><a data-go="registerFixer">Become a fixer</a><a data-go="login">Log in</a></div>
+        <div class="foot-col"><h4>For workers</h4><a data-go="registerFixer">Become a worker</a><a data-go="login">Log in</a></div>
         <div class="foot-col"><h4>Company</h4><a data-go="about">About</a><a data-go="about" data-hash="trust-sec">Trust &amp; safety</a><a data-go="about" data-hash="contact-sec">Contact</a></div>
       </div>
     </div>

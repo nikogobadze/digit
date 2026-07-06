@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS users (
   hourly_rate   INTEGER,
   work_mode     TEXT,
   avatar        TEXT,
+  cv            TEXT,
   availability  TEXT NOT NULL DEFAULT 'available',
   employment_status TEXT NOT NULL DEFAULT 'active',
   is_primary    INTEGER NOT NULL DEFAULT 0,
@@ -150,6 +151,7 @@ async function init() {
     for (const [c, def] of Object.entries(addsT)) if (!t.includes(c)) await db.execute(`ALTER TABLE tasks ADD COLUMN ${c} ${def}`);
     const u = await columns('users');
     if (!u.includes('avatar')) await db.execute(`ALTER TABLE users ADD COLUMN avatar TEXT`);
+    if (!u.includes('cv')) await db.execute(`ALTER TABLE users ADD COLUMN cv TEXT`);
     if (!u.includes('availability')) await db.execute(`ALTER TABLE users ADD COLUMN availability TEXT NOT NULL DEFAULT 'available'`);
     if (!u.includes('employment_status')) await db.execute(`ALTER TABLE users ADD COLUMN employment_status TEXT NOT NULL DEFAULT 'active'`);
   }
