@@ -107,11 +107,16 @@ function event(taskId, actorId, text) {
 async function taskView(t) {
   const client = await userById(t.client_id);
   const fixer = t.assigned_fixer_id ? await userById(t.assigned_fixer_id) : null;
-  const events = await all('SELECT * FROM task_events WHERE task_id = ? ORDER BY created_at ASC', [t.id]);
-  const eventsOut = [];
-  for (const e of events) {
-    eventsOut.push({ text: e.text, who: e.actor_id ? ((await userById(e.actor_id)) || {}).name : 'System', at: e.created_at });
+  // Stable order: same-second events fall back to insertion id.
+  const events = await all('SELECT * FROM task_events WHERE task_id = ? ORDER BY created_at ASC, id ASC', [t.id]);
+  // Resolve all actor names in ONE query instead of one-per-event (avoids N+1).
+  const actorIds = [...new Set(events.map(e => e.actor_id).filter(Boolean))];
+  const names = {};
+  if (actorIds.length) {
+    const rows = await all(`SELECT id, name FROM users WHERE id IN (${actorIds.map(() => '?').join(',')})`, actorIds);
+    for (const r of rows) names[r.id] = r.name;
   }
+  const eventsOut = events.map(e => ({ text: e.text, who: e.actor_id ? (names[e.actor_id] || 'System') : 'System', at: e.created_at }));
   return {
     id: t.id,
     category: t.category,
