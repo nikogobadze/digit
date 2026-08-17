@@ -753,15 +753,18 @@
     line-height:1.1;transition:background .15s,color .15s}
   .lang-btn:hover{color:var(--ink)}
   .lang-btn.on{background:var(--ink);color:#fff}
-  .lang-switch.mobile{display:flex;width:fit-content;margin:.5rem 0 0}
+  /* Stays in the header at every width. It used to drop out below 820px and
+     live only inside the collapsed burger menu, which made it unfindable on a
+     narrow window — the one control whose whole job is to be discoverable. */
+  @media (max-width:820px){
+    .nav-inner .lang-switch{margin-right:.45rem;padding:2px}
+    .lang-btn{padding:.26rem .5rem;font-size:.72rem}
+  }
   /* Georgian has no capitals and runs longer; a touch more line-height keeps
      headings from crowding, and buttons need room not to clip descenders. */
   html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{line-height:1.28}
   html[data-lang="ka"] .btn{line-height:1.35}
   html[data-lang="ka"] .chart-label,html[data-lang="ka"] .chart-tick{font-size:11px}
-  @media (max-width:820px){
-    .nav-inner .lang-switch{display:none}
-  }
 </style>
 </head>
 <body>
@@ -793,10 +796,6 @@
     <a data-go="home" data-hash="cats">Common Problems</a>
     <a data-go="reviews">Reviews</a>
     <a data-go="about">About</a>
-    <div class="lang-switch mobile" role="group" aria-label="Language">
-      <button type="button" class="lang-btn" data-lang-btn="en" data-no-i18n>EN</button>
-      <button type="button" class="lang-btn" data-lang-btn="ka" data-no-i18n>ქარ</button>
-    </div>
     <div class="mobile-auth" id="mobile-auth"><!-- filled by app.js --></div>
   </div>
 </header>
