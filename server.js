@@ -13,6 +13,7 @@ const fs = require('fs');
 const { put } = require('@vercel/blob');
 const { run, get, all, ready, CATEGORIES, CATEGORY_KEYS, labelFor, URGENCY_FEE, urgencyFee } = require('./db');
 const { computeAnalytics, computeWorkerDetail } = require('./analytics');
+const { i18nErrors } = require('./i18n-server');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,9 @@ const availMeta = (v) => AVAILABILITY[v] || AVAILABILITY.available;
 app.set('trust proxy', 1); // behind Vercel's proxy
 app.use(express.json());
 app.use(cookieParser());
+// Localises every { error } response body from the `lang` cookie. Must come
+// after cookieParser and before any route that can fail.
+app.use(i18nErrors);
 
 /* wrap async handlers so thrown errors reach the error handler */
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

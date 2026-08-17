@@ -1353,6 +1353,19 @@ async function saveProfile(e) {
   state.user = readAuthCache();      // instantly restore the last-known login (no flash)
   renderNav();
   // Confirm with the server + load categories in parallel.
+  /* Called by i18n.js after the language switch. The DOM translator handles all
+     the copy on its own; this exists for the parts a text swap cannot reach —
+     dates and numbers already formatted in the previous locale, which only a
+     fresh render will restate. */
+  window.__i18nRerender = () => {
+    renderNav();
+    const cur = VIEWS.find(v => $('#view-' + v)?.classList.contains('active'));
+    if (cur === 'dashboard') renderDashboard(true);
+    else if (cur === 'profile') renderProfile();
+    else if (cur === 'reviews') renderReviews();
+    else if (cur === 'fixers') renderFixers();
+  };
+
   const cats = loadCategories();
   const me = api('/api/me').then(r => setAuth(r.user)).catch(() => {});
   await Promise.allSettled([cats, me]);

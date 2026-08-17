@@ -739,6 +739,29 @@
     .an-tile.an-lead{background:#fff;color:var(--ink);border:1px solid #ccc}
     .an-tile.an-lead .an-tile-h,.an-tile.an-lead .an-delta-sub{color:var(--muted)}
   }
+
+  /* ---------- language switch ---------- */
+  .lang-switch{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);
+    border-radius:999px;background:var(--bg-soft)}
+  /* .nav-links is absolutely positioned and its box reaches across the header,
+     so the switch needs its own stacking context or the nav swallows the click.
+     margin-left:auto parks it at the right, immediately before .nav-cta. */
+  .nav-inner .lang-switch{margin-left:auto;margin-right:.6rem;position:relative;z-index:2}
+  .nav-inner .lang-switch + .nav-cta{margin-left:0}
+  .lang-btn{font:inherit;font-size:.78rem;font-weight:700;letter-spacing:.01em;cursor:pointer;
+    padding:.3rem .62rem;border:0;border-radius:999px;background:transparent;color:var(--muted);
+    line-height:1.1;transition:background .15s,color .15s}
+  .lang-btn:hover{color:var(--ink)}
+  .lang-btn.on{background:var(--ink);color:#fff}
+  .lang-switch.mobile{display:flex;width:fit-content;margin:.5rem 0 0}
+  /* Georgian has no capitals and runs longer; a touch more line-height keeps
+     headings from crowding, and buttons need room not to clip descenders. */
+  html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{line-height:1.28}
+  html[data-lang="ka"] .btn{line-height:1.35}
+  html[data-lang="ka"] .chart-label,html[data-lang="ka"] .chart-tick{font-size:11px}
+  @media (max-width:820px){
+    .nav-inner .lang-switch{display:none}
+  }
 </style>
 </head>
 <body>
@@ -756,6 +779,10 @@
       <a data-go="reviews">Reviews</a>
       <a data-go="about">About</a>
     </nav>
+    <div class="lang-switch" role="group" aria-label="Language">
+      <button type="button" class="lang-btn" data-lang-btn="en" aria-pressed="true" data-no-i18n>EN</button>
+      <button type="button" class="lang-btn" data-lang-btn="ka" aria-pressed="false" data-no-i18n>ქარ</button>
+    </div>
     <div class="nav-cta" id="nav-cta"><!-- filled by app.js --></div>
     <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -766,6 +793,10 @@
     <a data-go="home" data-hash="cats">Common Problems</a>
     <a data-go="reviews">Reviews</a>
     <a data-go="about">About</a>
+    <div class="lang-switch mobile" role="group" aria-label="Language">
+      <button type="button" class="lang-btn" data-lang-btn="en" data-no-i18n>EN</button>
+      <button type="button" class="lang-btn" data-lang-btn="ka" data-no-i18n>ქარ</button>
+    </div>
     <div class="mobile-auth" id="mobile-auth"><!-- filled by app.js --></div>
   </div>
 </header>
@@ -1189,6 +1220,8 @@
 <div id="toast"></div>
 
 <!-- charts.js and analytics.js declare functions only; app.js calls into them -->
+<!-- i18n first: it installs the DOM observer before app.js renders anything. -->
+<script src="/i18n.js"></script>
 <script src="/charts.js"></script>
 <script src="/analytics.js"></script>
 <script src="/app.js"></script>
