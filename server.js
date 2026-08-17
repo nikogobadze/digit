@@ -11,7 +11,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { put } = require('@vercel/blob');
-const { run, get, all, ready, CATEGORIES, CATEGORY_KEYS, labelFor } = require('./db');
+const { run, get, all, ready, CATEGORIES, CATEGORY_KEYS, labelFor, URGENCY_FEE, urgencyFee } = require('./db');
+const { computeAnalytics, computeWorkerDetail } = require('./analytics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,15 +29,6 @@ const AVAILABILITY = {
   offline:   { label: 'Offline',   assignable: false },
 };
 const availMeta = (v) => AVAILABILITY[v] || AVAILABILITY.available;
-
-/* Urgency surcharge — added on top of the manager's service price for the first
-   offer. "Whenever" is free; sooner costs more. */
-const URGENCY_FEE = {
-  'No rush — whenever': 0,
-  'Within a few days': 20,
-  'As soon as possible': 30,
-};
-const urgencyFee = (u) => URGENCY_FEE[u] || 0;
 
 app.set('trust proxy', 1); // behind Vercel's proxy
 app.use(express.json());
@@ -356,12 +348,12 @@ app.post('/api/tasks/:id/respond', auth, requireRole('client'), ah(async (req, r
   const { action } = req.body || {};
   const note = ((req.body || {}).note || '').trim().slice(0, 300) || null;
   if (action === 'accept') {
-    await run(`UPDATE tasks SET status='open', agreed_price=?, updated_at=datetime('now') WHERE id=?`, [t.counter_price, t.id]);
+    await run(`UPDATE tasks SET status='open', agreed_price=?, agreed_at=datetime('now'), updated_at=datetime('now') WHERE id=?`, [t.counter_price, t.id]);
     await event(t.id, req.user.id, `Client accepted the price of ₾${t.counter_price}. Ready for a manager to assign a worker.`);
   } else if (action === 'counter') {
     const price = parseInt((req.body || {}).price, 10);
     if (!(price >= 0)) return res.status(400).json({ error: 'Enter the price you can offer.' });
-    await run(`UPDATE tasks SET status='client_countered', counter_price=?, manager_note=?, updated_at=datetime('now') WHERE id=?`, [price, note, t.id]);
+    await run(`UPDATE tasks SET status='client_countered', counter_price=?, manager_note=?, offer_count=offer_count+1, updated_at=datetime('now') WHERE id=?`, [price, note, t.id]);
     await event(t.id, req.user.id, `Client countered with ₾${price}${note ? `: ${note}` : '.'}`);
   } else if (action === 'decline') {
     await run(`UPDATE tasks SET status='declined', updated_at=datetime('now') WHERE id=?`, [t.id]);
@@ -376,7 +368,7 @@ app.post('/api/tasks/:id/confirm', auth, requireRole('client'), ah(async (req, r
   const t = await taskById(+req.params.id);
   if (!t || t.client_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
   if (t.status !== 'work_done') return res.status(400).json({ error: 'This task is not awaiting confirmation.' });
-  await run(`UPDATE tasks SET status='completed', updated_at=datetime('now') WHERE id=?`, [t.id]);
+  await run(`UPDATE tasks SET status='completed', completed_at=datetime('now'), updated_at=datetime('now') WHERE id=?`, [t.id]);
   await event(t.id, req.user.id, 'Client confirmed the problem is fixed. ✅');
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
@@ -443,8 +435,13 @@ app.post('/api/tasks/:id/review', auth, requireRole('manager', 'admin'), ah(asyn
   const note = ((req.body || {}).manager_note || '').trim().slice(0, 300) || null;
   const fee = urgencyFee(t.urgency);
   const total = service + fee;
-  await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=?, manager_note=?, updated_at=datetime('now') WHERE id=?`,
-    [total, req.user.id, note, t.id]);
+  // reviewed_at + first_offer_price are written once and never revised — later
+  // rounds move counter_price, so this is the only record of the opening offer.
+  await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=?, manager_note=?,
+                    reviewed_at=COALESCE(reviewed_at, datetime('now')),
+                    first_offer_price=COALESCE(first_offer_price, ?),
+                    offer_count=offer_count+1, updated_at=datetime('now') WHERE id=?`,
+    [total, req.user.id, note, total, t.id]);
   await event(t.id, req.user.id,
     `Manager offered ₾${total}${fee ? ` (₾${service} for the work + ₾${fee} ${t.urgency} fee)` : ''}${note ? `: ${note}` : '.'}`);
   res.json({ task: await taskView(await taskById(t.id)) });
@@ -459,12 +456,12 @@ app.post('/api/tasks/:id/counter-reply', auth, requireRole('manager', 'admin'), 
   const { action } = req.body || {};
   const note = ((req.body || {}).manager_note || '').trim().slice(0, 300) || null;
   if (action === 'accept') {
-    await run(`UPDATE tasks SET status='open', agreed_price=?, manager_id=COALESCE(manager_id,?), updated_at=datetime('now') WHERE id=?`, [t.counter_price, req.user.id, t.id]);
+    await run(`UPDATE tasks SET status='open', agreed_price=?, agreed_at=datetime('now'), manager_id=COALESCE(manager_id,?), updated_at=datetime('now') WHERE id=?`, [t.counter_price, req.user.id, t.id]);
     await event(t.id, req.user.id, `Manager accepted the client's price of ₾${t.counter_price}. Ready to assign a worker.`);
   } else if (action === 'counter') {
     const price = parseInt((req.body || {}).price, 10);
     if (!(price >= 0)) return res.status(400).json({ error: 'Enter your counter price.' });
-    await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=COALESCE(manager_id,?), manager_note=?, updated_at=datetime('now') WHERE id=?`, [price, req.user.id, note, t.id]);
+    await run(`UPDATE tasks SET status='price_countered', counter_price=?, manager_id=COALESCE(manager_id,?), manager_note=?, offer_count=offer_count+1, updated_at=datetime('now') WHERE id=?`, [price, req.user.id, note, t.id]);
     await event(t.id, req.user.id, `Manager countered with ₾${price}${note ? `: ${note}` : '.'}`);
   } else if (action === 'decline') {
     await run(`UPDATE tasks SET status='declined', updated_at=datetime('now') WHERE id=?`, [t.id]);
@@ -483,7 +480,10 @@ app.post('/api/tasks/:id/release', auth, requireRole('manager', 'admin'), ah(asy
   if (!t) return res.status(404).json({ error: 'Task not found.' });
   if (t.status !== 'assigned') return res.status(400).json({ error: 'Only an in-progress task can be released.' });
   const prev = t.assigned_fixer_id ? await userById(t.assigned_fixer_id) : null;
-  await run(`UPDATE tasks SET status='open', assigned_fixer_id=NULL, updated_at=datetime('now') WHERE id=?`, [t.id]);
+  // Clear assigned_at so the next assignment's clock starts fresh; release_count
+  // remembers that this task needed reassigning at all.
+  await run(`UPDATE tasks SET status='open', assigned_fixer_id=NULL, assigned_at=NULL,
+                    release_count=release_count+1, updated_at=datetime('now') WHERE id=?`, [t.id]);
   await event(t.id, req.user.id, `${req.user.name} unassigned the task${prev ? ` from ${prev.name}` : ''}. Ready to assign a different worker.`);
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
@@ -544,7 +544,8 @@ app.post('/api/tasks/:id/assign', auth, requireRole('manager', 'admin'), ah(asyn
   if (!fixer || fixer.role !== 'fixer') return res.status(400).json({ error: 'That worker no longer exists.' });
   const av = availMeta(fixer.availability);
   if (!av.assignable) return res.status(409).json({ error: `${fixer.name} is currently ${av.label} and can't take new work. Pick a worker who's Available.` });
-  const r = await run(`UPDATE tasks SET status='assigned', assigned_fixer_id=?, manager_id=COALESCE(manager_id,?), updated_at=datetime('now')
+  const r = await run(`UPDATE tasks SET status='assigned', assigned_fixer_id=?, assigned_at=datetime('now'),
+                              manager_id=COALESCE(manager_id,?), updated_at=datetime('now')
                        WHERE id=? AND status='open'`, [fixerId, req.user.id, t.id]);
   if (!r.rowsAffected) return res.status(409).json({ error: 'This task was just updated — refresh and try again.' });
   // Taking on a job marks the fixer Busy automatically; they can change it back
@@ -575,9 +576,26 @@ app.post('/api/tasks/:id/done', auth, requireRole('fixer'), ah(async (req, res) 
   const t = await taskById(+req.params.id);
   if (!t || t.assigned_fixer_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
   if (t.status !== 'assigned') return res.status(400).json({ error: 'This task is not in progress.' });
-  await run(`UPDATE tasks SET status='work_done', updated_at=datetime('now') WHERE id=?`, [t.id]);
+  await run(`UPDATE tasks SET status='work_done', work_done_at=datetime('now'), updated_at=datetime('now') WHERE id=?`, [t.id]);
   await event(t.id, req.user.id, `${req.user.name} marked the work as done. Waiting for the client to confirm.`);
   res.json({ task: await taskView(await taskById(t.id)) });
+}));
+
+/* ==================================================================
+   ANALYTICS  — admins see the whole business; a manager sees only the
+   tasks they handled, with every money figure omitted from the payload
+   (stripped in analytics.js, not hidden in the UI).
+================================================================== */
+const analyticsScope = (u) => u.role === 'admin' ? { role: 'admin' } : { role: 'manager', managerId: u.id };
+
+app.get('/api/analytics', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  res.json(await computeAnalytics(req.query, analyticsScope(req.user)));
+}));
+
+app.get('/api/analytics/worker/:id', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  const detail = await computeWorkerDetail(+req.params.id, req.query, analyticsScope(req.user));
+  if (!detail) return res.status(404).json({ error: 'Worker not found.' });
+  res.json(detail);
 }));
 
 /* ==================================================================

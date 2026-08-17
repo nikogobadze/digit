@@ -515,6 +515,9 @@ setInterval(() => {
   if (!state.user) return;
   if (!$('#view-dashboard').classList.contains('active')) return;
   if ($('#modal-bg').classList.contains('show')) return;   // don't interrupt a review
+  // Analytics runs aggregate queries and owns its own 10-minute refresh (plus a
+  // Refresh button) — re-running all of it every 10s would be pure waste.
+  if (state.dashTab === 'analytics') return;
   const a = document.activeElement;                         // don't yank focus mid-interaction
   if (a && $('#dash-root').contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)) return;
   if ($('#dash-root').querySelector('.events.show')) return; // don't collapse activity the user opened
@@ -695,14 +698,21 @@ function groupCards(groups, active) {
 async function renderManager(root) {
   const { tasks } = await api('/api/manager/all');
   const groups = bucketize(tasks);
-  const keys = TASK_GROUPS.map(g => g.key);
+  const keys = [...TASK_GROUPS.map(g => g.key), 'analytics'];
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'queue';
+  // A manager's Analytics tab covers only the tasks they managed, and the
+  // server leaves every money figure out of their payload.
+  const body = tab === 'analytics'
+    ? `<div id="analytics-root">${loadingBox('Crunching the numbers…')}</div>`
+    : `<div class="grid">${groupCards(groups, tab)}</div>`;
   root.innerHTML = `
     <div class="dash-head"><div><h1>Manager dashboard</h1><p>Review new problems, set fair prices, route to workers.</p></div>
       ${seeFixersBtn()}</div>
-    <div class="tabs spread">${groupTabsHtml(groups, tab)}</div>
-    <div class="grid">${groupCards(groups, tab)}</div>`;
+    <div class="tabs spread">${groupTabsHtml(groups, tab)}
+      <div class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">Analytics</div></div>
+    ${body}`;
   wireTabs(root);
+  if (tab === 'analytics') mountAnalytics();
 }
 function managerQueueCard(t) {
   return cardShell(t, `
@@ -1004,15 +1014,20 @@ async function openCounterReply(id) {
 
 /* ---------- ADMIN ---------- */
 async function renderAdmin(root) {
-  const keys = ['people', ...TASK_GROUPS.map(g => g.key)];
+  const keys = ['people', 'analytics', ...TASK_GROUPS.map(g => g.key)];
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'people';
   const { tasks } = await api('/api/manager/all');
   const groups = bucketize(tasks);
-  const tabsHtml = `<div class="tab ${tab==='people'?'on':''}" data-tab="people">People</div>${groupTabsHtml(groups, tab)}`;
+  const tabsHtml = `<div class="tab ${tab==='people'?'on':''}" data-tab="people">People</div>
+    <div class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">Analytics</div>${groupTabsHtml(groups, tab)}`;
   let body;
   if (tab === 'people') {
     const { users } = await api('/api/admin/users');
     body = adminPeople(users);
+  } else if (tab === 'analytics') {
+    // Placeholder now, filled by mountAnalytics() — the tabs stay responsive
+    // while the aggregate queries run.
+    body = `<div id="analytics-root">${loadingBox('Crunching the numbers…')}</div>`;
   } else {
     body = `<div class="grid">${groupCards(groups, tab)}</div>`;
   }
@@ -1023,6 +1038,7 @@ async function renderAdmin(root) {
     ${body}`;
   wireTabs(root);
   if (tab === 'people') wireRoleSelects();
+  if (tab === 'analytics') mountAnalytics();
 }
 // Fixed order: admins → managers → fixers → clients, A–Z within each group.
 const ROLE_RANK = { admin: 0, manager: 1, fixer: 2, client: 3 };

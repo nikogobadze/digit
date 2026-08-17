@@ -21,6 +21,14 @@
     --ok:#1F9D6B;--ok-soft:#E4F6EE;--warn:#B8860B;--warn-soft:#FBF3DD;
     --info:#2563EB;--info-soft:#E5EDFF;--bad:#C2410C;--bad-soft:#FCEAE0;
     --r:18px;--r-sm:12px;--r-pill:999px;
+    /* Chart palette (see public/charts.js). Categorical slots are assigned in
+       this fixed order and never cycled — the order is what keeps every
+       adjacent pair apart for colour-blind readers, so don't shuffle it.
+       Validated against this white surface: worst adjacent CVD ΔE 9.1,
+       worst normal-vision ΔE 19.6. --s3/--s4/--s5 fall under 3:1 contrast,
+       which is why every chart also carries direct labels and a table. */
+    --s1:#4a3aa7;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;
+    --s5:#e87ba4;--s6:#008300;--s7:#2a78d6;--s8:#e34948;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth;scrollbar-gutter:stable}
@@ -588,6 +596,149 @@
   @media(max-width:600px){#view-registerClient .back,#view-registerFixer .back,#view-post .back,#view-login .back,#view-about .back,#view-profile .back{position:static}#view-registerClient .flow-card,#view-registerFixer .flow-card,#view-post .flow-card,#view-login .flow-card,#view-profile .flow-card{margin-top:1.5rem}#view-about .page-body{margin-top:1.5rem}}
   @media(max-width:480px){.cats{grid-template-columns:1fr}.flow-card{padding:1.5rem}.plabel{display:none}}
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+  /* ================= ANALYTICS ================= */
+  .analytics{padding-bottom:1rem}
+  .an-h{font-size:1.32rem;margin:2.1rem 0 .85rem}
+  .an-h:first-of-type{margin-top:1.4rem}
+
+  /* range + actions bar: one row above the charts */
+  .an-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem 1.1rem;padding:.85rem 1rem;background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r);margin-bottom:1rem}
+  .an-presets{display:flex;flex-wrap:wrap;gap:.4rem}
+  .an-chip{font-size:.84rem;font-weight:600;padding:.42rem .8rem;border-radius:var(--r-pill);border:1px solid var(--line);background:#fff;color:var(--ink);transition:background .15s,border-color .15s,color .15s}
+  .an-chip:hover{border-color:var(--violet);color:var(--violet-deep)}
+  .an-chip.on{background:var(--grad);color:#fff;border-color:transparent}
+  .an-chip:focus-visible,.an-tool:focus-visible{outline:3px solid var(--violet-100);outline-offset:2px}
+  .an-dates{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .an-dates label{display:flex;align-items:center;gap:.4rem;font-size:.84rem;color:var(--muted);font-weight:600}
+  .an-dates .input{width:auto;padding:.4rem .6rem;font-size:.85rem}
+  .an-actions{display:flex;align-items:center;gap:.5rem;margin-left:auto}
+  .an-updated{font-size:.8rem;color:var(--muted)}
+  .an-tool{font-size:.8rem;font-weight:600;padding:.36rem .72rem;border-radius:var(--r-pill);border:1px solid var(--line);background:#fff;color:var(--muted);transition:color .15s,border-color .15s}
+  .an-tool:hover{color:var(--violet-deep);border-color:var(--violet)}
+  #an-refresh.spinning{opacity:.6}
+  .an-note{background:var(--violet-soft);color:var(--violet-deep);border-radius:var(--r-sm);padding:.6rem .9rem;font-size:.88rem;font-weight:600;margin-bottom:1rem}
+
+  /* stat tiles */
+  .an-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:.8rem}
+  /* Tiles stretch to the tallest in the row (a KPI row should be even), so the
+     delta is pushed to the bottom — otherwise it floats wherever the text ends
+     and the comparisons don't line up across cards. */
+  .an-tile{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:1rem 1.1rem 1.05rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column}
+  .an-tile.an-lead{background:var(--grad);border-color:transparent;color:#fff}
+  .an-tile-v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1.72rem;letter-spacing:-.02em;line-height:1.1}
+  .an-tile.an-lead .an-tile-v{font-size:2.1rem}
+  .an-tile-l{font-size:.85rem;font-weight:600;margin-top:.18rem}
+  .an-tile-h{font-size:.78rem;color:var(--muted);margin-top:.1rem}
+  .an-tile.an-lead .an-tile-h,.an-tile.an-lead .an-delta-sub{color:rgba(255,255,255,.72)}
+  .an-delta{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem;font-size:.8rem;font-weight:700;margin-top:auto;padding-top:.5rem}
+  .an-delta.up{color:var(--ok)}.an-delta.down{color:var(--bad)}.an-delta.flat{color:var(--muted)}
+  .an-tile.an-lead .an-delta.up{color:#8FE7C2}.an-tile.an-lead .an-delta.down{color:#FFC7A8}.an-tile.an-lead .an-delta.flat{color:rgba(255,255,255,.75)}
+  .an-delta-sub{font-weight:500;color:var(--muted);font-size:.74rem}
+
+  /* chart cards */
+  .an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:1rem;align-items:start}
+  .an-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:1.1rem 1.15rem 1.2rem;min-width:0}
+  .an-card.wide{grid-column:1/-1}
+  .an-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.9rem}
+  .an-card-head h3{font-size:1.04rem}
+  .an-card-head p{font-size:.83rem;color:var(--muted);margin-top:.18rem;line-height:1.45}
+  .an-tools{display:flex;gap:.4rem;flex-shrink:0}
+  /* Wide charts scroll rather than shrinking their labels into illegibility. */
+  .an-card-body{overflow-x:auto;overflow-y:hidden}
+  .chart-svg{max-width:100%;height:auto;display:block}
+  .an-card.wide .chart-svg{min-width:680px}
+  .an-sub{font-size:.86rem;font-weight:700;color:var(--muted);margin:1.1rem 0 .5rem}
+  .an-lede{font-size:.9rem;color:var(--ink);margin:.2rem 0 .8rem;line-height:1.5}
+  .an-lede.ok{color:var(--ok);font-weight:600}
+  .an-foot-note{font-size:.8rem;color:var(--muted);margin-top:.6rem}
+  .an-foot{font-size:.78rem;color:var(--muted);text-align:center;margin-top:1.6rem}
+
+  /* chart text + legend */
+  .chart-tick{font-size:11px;fill:var(--muted);font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .chart-label{font-size:12px;fill:var(--ink);font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .chart-value{font-size:12px;font-weight:700;fill:var(--ink);font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  .chart-value.sm{font-size:10.5px;font-weight:600;fill:var(--muted)}
+  .chart-muted{font-weight:500;fill:var(--muted)}
+  .ch-mark{transition:opacity .12s}
+  .ch-mark:hover{opacity:.82}
+  .ch-band{cursor:crosshair}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;margin-top:.6rem;font-size:.82rem;color:var(--muted);font-weight:600}
+  .chart-legend .lg{display:inline-flex;align-items:center;gap:.38rem}
+  .chart-legend i{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+  .spark{margin-top:.6rem;width:100%;height:32px}
+
+  /* tooltip — one element, shared by every chart */
+  #chart-tip{position:fixed;top:0;left:0;z-index:200;pointer-events:none;opacity:0;transition:opacity .12s;
+    background:var(--violet-deep);color:#fff;border-radius:10px;padding:.45rem .68rem;font-size:.81rem;
+    line-height:1.35;box-shadow:0 10px 28px rgba(11,11,69,.32);max-width:280px}
+  #chart-tip.show{opacity:1}
+  #chart-tip b{display:block;font-weight:700}
+  #chart-tip span{color:rgba(255,255,255,.82)}
+
+  /* meter */
+  .meter{margin:.5rem 0 .2rem}
+  .meter-track{height:10px;border-radius:var(--r-pill);background:var(--bg-soft);overflow:hidden}
+  /* scaleX, not width — animating width would force a layout pass every frame */
+  .meter-fill{height:100%;width:100%;border-radius:var(--r-pill);transform-origin:left center;transition:transform .3s ease}
+  .meter-label{font-size:.82rem;color:var(--muted);margin-top:.4rem;font-weight:600}
+
+  /* mini stat strip inside a card */
+  .an-mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:.7rem;margin-bottom:.9rem}
+  .an-mini>div{background:var(--bg-soft);border-radius:var(--r-sm);padding:.6rem .7rem}
+  .an-mini-v{display:block;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1.12rem;letter-spacing:-.02em}
+  .an-mini-l{display:block;font-size:.76rem;color:var(--muted);margin-top:.08rem;line-height:1.3}
+  .an-hero-figure{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6rem;letter-spacing:-.03em;line-height:1;color:var(--violet)}
+  .an-hero-figure span{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--muted);letter-spacing:0;margin-top:.3rem}
+
+  /* tables (the accessible view of every chart) */
+  .an-table-wrap{display:none;margin-top:.9rem;overflow-x:auto}
+  .an-table-wrap.show{display:block}
+  .an-table{width:100%;border-collapse:collapse;font-size:.86rem}
+  .an-table th{text-align:left;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:.5rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  .an-table td{padding:.52rem .6rem;border-bottom:1px solid var(--line)}
+  .an-table th.r,.an-table td.r{text-align:right;font-variant-numeric:tabular-nums}
+  .an-table tbody tr:hover{background:var(--bg-soft)}
+  .an-empty-row{text-align:center;color:var(--muted);padding:1.2rem!important}
+  .an-table.board td{padding:.6rem}
+  .an-link{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;color:var(--violet);font-size:.9rem;text-align:left}
+  .an-link:hover{text-decoration:underline}
+  .an-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.4rem;vertical-align:middle}
+  .an-flag{font-size:.72rem;font-weight:700;color:var(--bad);background:var(--bad-soft);border-radius:var(--r-pill);padding:.1rem .45rem;margin-left:.35rem}
+
+  /* worker drill-down */
+  .an-modal-head{display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem}
+  .an-modal-head h3{font-size:1.2rem}
+  .an-chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.9rem}
+  .an-chips .chip{cursor:default;font-size:.76rem;padding:.32rem .6rem}
+
+  @media(max-width:760px){
+    .an-grid{grid-template-columns:1fr}
+    .an-actions{margin-left:0}
+    .an-card{padding:.95rem}
+    .an-card .chart-svg{min-width:520px}
+    /* stacked-card table layout, same trick the People table uses */
+    .an-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    .an-table tr{display:block;border:1px solid var(--line);border-radius:var(--r-sm);padding:.6rem .8rem;margin-bottom:.6rem}
+    .an-table td{display:flex;justify-content:space-between;gap:1rem;border:none;padding:.28rem 0;text-align:left!important}
+    .an-table td::before{content:attr(data-label);font-weight:600;color:var(--muted);font-size:.78rem}
+  }
+
+  /* Print: charts and tables only, everything open, nothing clipped. */
+  @media print{
+    header.nav,.mobile-menu,#toast,#modal-bg,.dash-head .btn,.tabs,.an-bar,.an-tools,.an-note{display:none!important}
+    body{background:#fff}
+    .dash{padding:0}
+    .wrap{width:100%}
+    .an-grid{grid-template-columns:1fr;gap:.6rem}
+    .an-card,.an-tile{box-shadow:none;border-color:#ccc;break-inside:avoid;page-break-inside:avoid}
+    .an-card.wide .chart-svg,.an-card .chart-svg{min-width:0}
+    .an-card-body{overflow:visible}
+    .an-table-wrap{display:block!important}
+    .an-h{break-after:avoid;page-break-after:avoid}
+    .an-tile.an-lead{background:#fff;color:var(--ink);border:1px solid #ccc}
+    .an-tile.an-lead .an-tile-h,.an-tile.an-lead .an-delta-sub{color:var(--muted)}
+  }
 </style>
 </head>
 <body>
@@ -1037,6 +1188,9 @@
 <div class="modal-bg" id="modal-bg"><div class="modal" id="modal"></div></div>
 <div id="toast"></div>
 
+<!-- charts.js and analytics.js declare functions only; app.js calls into them -->
+<script src="/charts.js"></script>
+<script src="/analytics.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

@@ -74,15 +74,59 @@ Manager reviews ──approve──▶ open ──manager assigns a fixer──�
 - **admin** — everything a manager can do, plus promote/demote
   fixer ⇄ manager ⇄ admin. The first seeded admin is protected and can't be changed.
 
+## Analytics
+
+The **Analytics** tab on the admin dashboard reports on the whole business:
+money, the task funnel, worker performance, categories, pricing and clients.
+
+- **Money is three separate figures**, because they answer different questions:
+  *collected* (paid), *booked* (agreed value of completed work) and
+  *outstanding* (completed but not yet paid). There is no commission model —
+  these are gross client payments.
+- **Range**: presets from 7 days to all time, plus a custom from/to window.
+  Charts re-bucket themselves — daily, weekly or monthly — to suit the range.
+- **Managers get the same page for their own tasks**, with every money figure
+  omitted server-side. They see throughput, worker scores and how their pricing
+  moved, not revenue.
+- Every chart ships with a table view and a CSV export, the page prints cleanly,
+  and clicking a worker opens their individual breakdown.
+- Unlike the other dashboards (which poll every 10 seconds), Analytics refreshes
+  every 10 minutes and has a **Refresh** button — these are aggregate queries.
+
+Stage timings (how long pricing, assignment and the fix itself take) come from
+real timestamp columns on `tasks`, written by the routes that cause each
+transition. Tasks created before those columns existed are backfilled once from
+the event trail; anything that can't be established stays empty rather than
+being counted as zero.
+
+**To see it with data**, a fresh database has no tasks — run:
+
+```bash
+node scripts/seed-demo.js        # ~180 tasks across the last 12 months
+node scripts/seed-demo.js --reset  # remove them again
+```
+
+It only touches the local `digit.db` and refuses to run if `DATABASE_URL` is set.
+
+To get that same data into the **hosted** database (so the deployed site isn't
+empty), upload the local file once the database exists — see
+[Seeding the hosted database](#seeding-the-hosted-database).
+
 ## Project layout
 
 ```
 server.js        Express app + all API routes (exported for Vercel)
-db.js            libSQL schema, shared taxonomy, seed data
+db.js            libSQL schema, shared taxonomy, urgency fees, seed data
+analytics.js     every figure the Analytics page shows, aggregated in SQL
 vercel.json      Vercel routing config
 public/
   index.html     UI (landing, auth, post flow, dashboards)
   app.js         SPA logic + API calls
+  charts.js      dependency-free SVG chart primitives
+  analytics.js   the Analytics tab (range control, cards, CSV, drill-down)
+scripts/
+  seed-demo.js      dev-only: fills the local DB with a year of sample tasks
+  push-to-remote.js uploads the local digit.db to the hosted (Turso) database
 uploads/         local-dev image storage (Vercel Blob in production)
 ```
 
@@ -105,6 +149,35 @@ no setup needed).
 
 Config lives in `vercel.json` (routes everything to the Express app, which is
 exported from `server.js`).
+
+> Steps 1 and 4 can be done in one go with the Vercel CLI, which provisions a
+> Turso database on the Marketplace and writes the two variables for you:
+>
+> ```bash
+> vercel link
+> vercel integration add tursocloud/database --plan starter -m region=hnd1
+> ```
+>
+> The Marketplace names its variables `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`;
+> the app reads `DATABASE_URL` / `DATABASE_AUTH_TOKEN`, so alias them once with
+> `vercel env add`.
+
+### Seeding the hosted database
+
+A fresh deployment only gets the five demo accounts from `db.js`, so the
+Analytics page has nothing to draw. To give it the same year of data you have
+locally, upload `digit.db` wholesale:
+
+```bash
+vercel env pull .env.local        # fetch DATABASE_URL + DATABASE_AUTH_TOKEN
+node scripts/push-to-remote.js    # copy every row up
+```
+
+It copies `users`, `fixer_skills`, `tasks` and `task_events` **keeping their
+primary keys**, so every foreign key still resolves, then re-counts both sides
+and fails loudly if they disagree. It refuses to touch a database that already
+has rows unless you pass `--replace` (which wipes those four tables first), and
+`--dry-run` reports what it would do without writing.
 
 ## Notes for going to production
 

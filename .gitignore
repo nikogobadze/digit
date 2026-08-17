@@ -1,12 +1,22 @@
 node_modules/
+
+# Local database + uploads (production uses Turso + Vercel Blob)
 digit.db
 digit.db-*
 uploads/*
 !uploads/.gitkeep
-server.log
 backups/
-.vercel
+server.log
+
+# Secrets. .env.local is written by `vercel env pull` and holds live tokens.
 .env*
 !.env.example
 
-.env*
+# Vercel project link
+.vercel
+
+# Agent tooling installed alongside the project, not part of the app
+.agents/
+.claude/
+.impeccable/
+skills-lock.json
