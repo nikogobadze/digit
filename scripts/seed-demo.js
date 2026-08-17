@@ -2,8 +2,9 @@
    seed-demo.js — DEV ONLY. Fills the local database with a year of
    believable tasks so the Analytics page has something to draw.
 
-       node scripts/seed-demo.js          add ~180 tasks
-       node scripts/seed-demo.js --reset  delete demo data first
+       node scripts/seed-demo.js             add ~180 tasks
+       node scripts/seed-demo.js --count=90  add ~90 instead
+       node scripts/seed-demo.js --reset     delete demo data first
 
    The app never imports this. It writes the same columns the live
    routes write (including the stage timestamps), so the numbers it
@@ -19,12 +20,18 @@ if (process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const TASK_COUNT = 180;
+const countArg = (process.argv.find(a => a.startsWith('--count=')) || '').split('=')[1];
+const TASK_COUNT = Math.max(1, parseInt(countArg, 10) || 180);
 const DAY = 86400000;
 
-/* deterministic PRNG so repeated runs are comparable */
+/* Deterministic PRNG so repeated runs are comparable. Math.imul is load-bearing:
+   a plain `s * 1103515245` overflows the 53-bit safe-integer range on the second
+   step, and the garbage low bits collapse the stream into a short, correlated
+   cycle (~15k distinct values per 100k draws) — which silently starved whole
+   branches below, so no task ever came out 'open'. imul keeps the multiply exact
+   at 32 bits and gives the full period. */
 let s = 1337;
-const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+const rnd = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 const int = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
 const chance = (p) => rnd() < p;
@@ -158,14 +165,25 @@ async function main() {
     // --- a round of haggling, sometimes
     let agreedPrice = firstOffer, rounds = 1;
     let agreed = reviewed + int(1, 48) * 3600000;
-    if (chance(0.3)) {
+    const counterAt = agreed - 1800000;
+    if (chance(0.3) && counterAt <= now) {
       rounds = 2;
       agreedPrice = Math.max(10, Math.round(firstOffer * (0.75 + rnd() * 0.2) / 5) * 5);
-      await ev(agreed - 1800000, `Client countered with ₾${agreedPrice}.`);
+      await ev(counterAt, `Client countered with ₾${agreedPrice}.`);
     }
-    if (agreed > now) continue;
-    // --- still negotiating
-    if (chance(0.05)) continue;
+    // Stopping mid-negotiation has to leave the status saying whose move it is.
+    // After a client counter the manager owes the reply ('client_countered');
+    // with no counter the client still owes an answer to the opening offer, which
+    // is what 'price_countered' already means — so only the first case is written.
+    const stall = () => rounds > 1
+      ? run(`UPDATE tasks SET status='client_countered', counter_price=?, offer_count=?, updated_at=? WHERE id=?`,
+          [agreedPrice, rounds, stamp(counterAt), id])
+      : Promise.resolve();
+    if (agreed > now) { await stall(); continue; }
+    // --- still negotiating. A counter awaiting the manager's reply is the one
+    // state their queue needs to show, so those stall more often than a client
+    // who is simply sitting on the opening offer.
+    if (rounds > 1 ? chance(0.18) : chance(0.05)) { await stall(); continue; }
 
     await run(`UPDATE tasks SET status='open', agreed_price=?, agreed_at=?, offer_count=?, updated_at=? WHERE id=?`,
       [agreedPrice, stamp(agreed), rounds, stamp(agreed), id]);

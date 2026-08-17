@@ -571,7 +571,9 @@ function anCategories(d, money) {
     : `<p class="an-lede">${movement('Your prices')} Amounts are admin-only.</p>`;
 
   const pricing = anCard({
-    title: 'Pricing &amp; negotiation',
+    // Plain '&': anCard runs the title through esc(), so a pre-escaped entity
+    // would render literally as "Pricing &amp; negotiation".
+    title: 'Pricing & negotiation',
     body: `${priceBody}
       ${chartBars({
         rows: [

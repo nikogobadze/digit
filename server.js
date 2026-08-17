@@ -484,7 +484,21 @@ app.post('/api/tasks/:id/release', auth, requireRole('manager', 'admin'), ah(asy
   // remembers that this task needed reassigning at all.
   await run(`UPDATE tasks SET status='open', assigned_fixer_id=NULL, assigned_at=NULL,
                     release_count=release_count+1, updated_at=datetime('now') WHERE id=?`, [t.id]);
-  await event(t.id, req.user.id, `${req.user.name} unassigned the task${prev ? ` from ${prev.name}` : ''}. Ready to assign a different worker.`);
+  // Assigning marked the fixer Busy, so releasing has to hand that back: they did
+  // not choose to drop the job and would otherwise stay unassignable — including
+  // for this very task, which the message below invites the manager to re-route.
+  // Only if nothing else is still on their plate; another live job keeps them Busy.
+  let freed = false;
+  if (prev && prev.availability === 'busy') {
+    const other = Number((await get(
+      `SELECT COUNT(*) AS n FROM tasks WHERE assigned_fixer_id = ? AND status IN ('assigned','work_done')`,
+      [prev.id])).n) || 0;
+    if (!other) {
+      await run(`UPDATE users SET availability='available' WHERE id=?`, [prev.id]);
+      freed = true;
+    }
+  }
+  await event(t.id, req.user.id, `${req.user.name} unassigned the task${prev ? ` from ${prev.name}` : ''}.${freed ? ` ${prev.name} is Available again.` : ''} Ready to assign a different worker.`);
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
