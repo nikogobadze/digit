@@ -66,7 +66,12 @@
   .logo .mark svg{width:26px;height:26px;display:block;transform:translate(0.5px,-0.5px)}
   .logo .mark-img{width:42px;height:42px;object-fit:contain;flex-shrink:0;display:block;position:relative;top:0;margin-right:8px}
   .logo b{color:var(--violet)}
-  .nav-links{position:absolute;left:29%;transform:translateX(-50%);display:flex;align-items:center;gap:1.6rem;font-weight:500;font-size:.95rem;color:var(--muted)}
+  /* A normal flex child, deliberately not absolutely positioned. It used to be
+     position:absolute;left:29%;translateX(-50%) — centred on a fixed percentage of
+     the header, so a longer set of labels grew outwards in both directions and ran
+     straight over the logo. Georgian made that obvious. */
+  .nav-links{display:flex;align-items:center;gap:1.5rem;margin-left:2.25rem;min-width:0;
+    font-weight:500;font-size:.95rem;color:var(--muted)}
   .nav-links a{transition:color .15s;cursor:pointer}
   .nav-links a:hover{color:var(--ink)}
   .nav-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--ink);padding:.35rem;border-radius:8px;align-items:center;justify-content:center}
@@ -100,10 +105,10 @@
   .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 4px rgba(11,11,69,.18)}
   .hero .eyebrow{color:#C8C8F2;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.15);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
   .hero .eyebrow .dot{background:#9A9AEC;box-shadow:0 0 0 4px rgba(154,154,236,.22)}
-  .hero h1{font-size:clamp(2.4rem,4.7vw,3.7rem);font-weight:800;letter-spacing:-.02em;line-height:1.04}
+  .hero h1{font-size:clamp(1.95rem,3.6vw,2.9rem);font-weight:800;letter-spacing:-.02em;line-height:1.09}
   .hero h1 .hl{background:linear-gradient(96deg,#9E9EFF 0%,#EAEAFF 50%,#9E9EFF 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheenmove 6s linear infinite}
   @keyframes sheenmove{to{background-position:200% center}}
-  .hero p.lede{font-size:1.15rem;color:#C2C2DE;margin:1.1rem 0 .5rem;max-width:36ch}
+  .hero p.lede{font-size:1.06rem;color:#C2C2DE;margin:.95rem 0 .5rem;max-width:38ch;line-height:1.5}
   .reassure{display:inline-flex;align-items:center;gap:.5rem;color:#EDEDF6;font-weight:600;font-size:.9rem;margin:.3rem 0 1.5rem}
   .reassure svg{width:18px;height:18px;color:#9A9AEC}
   .hero-cta{display:flex;gap:.9rem;flex-wrap:wrap}
@@ -120,11 +125,15 @@
   .avatars{display:flex}
   .avatars span{width:28px;height:28px;border-radius:50%;border:2px solid #0B0B45;margin-left:-9px;background:linear-gradient(135deg,#6E6EF5,#C8C8F2)}
   .avatars span:first-child{margin-left:0}
-  .preview{position:relative;min-width:0}
+  .preview{position:relative;min-width:0;max-width:100%}
   .preview::before{content:"";position:absolute;inset:-9% -7%;z-index:0;background:radial-gradient(58% 58% at 50% 42%,rgba(110,110,245,.5),transparent 72%);filter:blur(26px)}
   .pcard{position:relative;z-index:1;background:#fff;border:1px solid rgba(255,255,255,.55);border-radius:24px;box-shadow:0 30px 70px rgba(0,0,0,.45);padding:1.5rem;transform:rotate(-1.4deg);color:var(--ink)}
-  .pcard .phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-  .pcard .ptitle{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.05rem}
+  /* Wraps rather than forcing the card wider: the title and the step pill are both
+     translated, and in Georgian their combined width pushed .pcard past a 390px
+     viewport and scrolled the whole page sideways. */
+  .pcard .phead{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+    flex-wrap:wrap;margin-bottom:1rem}
+  .pcard .ptitle{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.05rem;min-width:0}
   .pcard .pstep{font-family:'Space Mono';font-size:.72rem;color:var(--violet-deep);background:var(--violet-soft);padding:.25rem .6rem;border-radius:var(--r-pill)}
   .chiprow{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
   .chiprow.marquee{flex-wrap:nowrap;overflow:hidden;width:100%;min-width:0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
@@ -532,7 +541,10 @@
   footer{background:#fff;border-top:1px solid var(--line);padding:3rem 0 2rem}
   .foot-grid{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:2rem}
   .foot-grid p{color:var(--muted);font-size:.92rem;max-width:30ch;margin-top:.8rem}
-  .foot-links{display:flex;gap:3rem}
+  /* Wraps: three fixed columns at a 3rem gap were 454px wide once the labels were
+     translated, which scrolled the whole page sideways on a 390px screen. */
+  .foot-links{display:flex;flex-wrap:wrap;gap:1.5rem 2.5rem;min-width:0}
+  .foot-col{min-width:0}
   .foot-col h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.9rem;font-family:'Plus Jakarta Sans';font-weight:700}
   .foot-col a{display:block;color:var(--ink);font-size:.93rem;padding:.25rem 0;font-weight:500;cursor:pointer}
   .foot-col a:hover{color:var(--violet)}
@@ -540,7 +552,7 @@
 
   @media(max-width:880px){
     .nav-links{display:none}.hero-grid{grid-template-columns:1fr;gap:2.5rem}
-    .preview{max-width:420px;margin:0 auto}.steps{grid-template-columns:1fr}.step .line{display:none}
+    .preview{max-width:min(420px,100%);margin:0 auto}.steps{grid-template-columns:1fr}.step .line{display:none}
     .cats{grid-template-columns:1fr 1fr}.fixer-band{grid-template-columns:1fr;padding:2.2rem}
     .two{grid-template-columns:1fr}.foot-grid{flex-direction:column}
     .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -760,10 +772,17 @@
     .nav-inner .lang-switch{margin-right:.45rem;padding:2px}
     .lang-btn{padding:.26rem .5rem;font-size:.72rem}
   }
-  /* Georgian has no capitals and runs longer; a touch more line-height keeps
-     headings from crowding, and buttons need room not to clip descenders. */
-  html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{line-height:1.28}
+  /* Georgian runs ~20% longer than the English, has no capitals, and its letter
+     shapes need a little vertical room. So: no negative tracking (which was tuned
+     for Latin), slightly tighter type than the English at the same breakpoint so
+     the longer strings still fit, and enough line-height not to crowd. */
+  html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{letter-spacing:0}
+  html[data-lang="ka"] h1{line-height:1.16}
+  html[data-lang="ka"] h2,html[data-lang="ka"] h3{line-height:1.22}
+  html[data-lang="ka"] .hero h1{font-size:clamp(1.75rem,3.15vw,2.5rem)}
+  html[data-lang="ka"] .hero p.lede{font-size:1rem;max-width:40ch}
   html[data-lang="ka"] .btn{line-height:1.35}
+  html[data-lang="ka"] .nav-links{gap:1.15rem;font-size:.9rem;margin-left:1.5rem}
   html[data-lang="ka"] .chart-label,html[data-lang="ka"] .chart-tick{font-size:11px}
 </style>
 </head>
