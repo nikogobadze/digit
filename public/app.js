@@ -1223,6 +1223,11 @@ function wireTabScroll(root) {
     row.scrollLeft = Math.max(0, Math.min(max, target));
   }
   updateTabFade();
+  /* Measured again once the webfonts land. Until Noto Sans Georgian arrives the
+     labels are laid out in the fallback face and come out narrower, so the row
+     can look like it fits and the fade gets left off. Only reproduced against
+     production, where the font is an actual network fetch. */
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateTabFade);
 }
 function labelOf(key) { return (state.cats.find(c => c.key === key) || {}).label || key; }
 
