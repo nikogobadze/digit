@@ -77,7 +77,11 @@
      position:absolute;left:29%;translateX(-50%) — centred on a fixed percentage of
      the header, so a longer set of labels grew outwards in both directions and ran
      straight over the logo. Georgian made that obvious. */
-  .nav-links{display:flex;align-items:center;gap:1.5rem;margin-left:2.25rem;min-width:0;
+  /* flex-shrink:0, not min-width:0. The labels are nowrap, so a shrinkable box just
+     lets them spill out over the language switch while the container's own
+     rectangle still measures clean — which is exactly how it hid. If they cannot
+     fit they are hidden outright by the breakpoints below, never squashed. */
+  .nav-links{display:flex;align-items:center;gap:1.5rem;margin-left:2.25rem;flex-shrink:0;
     font-weight:500;font-size:.95rem;color:var(--muted)}
   .nav-links a{transition:color .15s;cursor:pointer;white-space:nowrap}
   .nav-links a:hover{color:var(--ink)}
@@ -839,11 +843,26 @@
         user chip, two buttons). The Georgian labels are wide enough that the links
         were being squeezed until they broke mid-phrase, so they fold into the
         burger earlier here than they do in English. */
-  @media (max-width:1280px){ html[data-lang="ka"] .nav-links{display:none} }
-  /* Signed in there is a user chip and two more buttons in the row, and the wider
-     Georgian labels then collide with the switch even at 1440. The dashboard is
-     the point of the page at that stage, so the marketing links fold away. */
-  @media (max-width:1560px){ html[data-lang="ka"] body.signed-in .nav-links{display:none} }
+  /* Georgian labels are wider, so the header is trimmed to fit rather than having
+     the navigation removed — the links stay visible down to the same 880px burger
+     breakpoint English uses. Everything here buys back horizontal room. */
+  html[data-lang="ka"] .nav-links{gap:1.05rem;font-size:.88rem;margin-left:1.15rem}
+  html[data-lang="ka"] .nav-inner .lang-switch{margin-right:.5rem}
+  html[data-lang="ka"] .nav-cta{gap:.5rem}
+  html[data-lang="ka"] .nav-cta .btn-sm{padding-left:.72rem;padding-right:.72rem}
+  html[data-lang="ka"] .who{gap:.45rem;font-size:.86rem}
+  /* The role pill is the least load-bearing thing in the row — the dashboard says
+     the same thing — so it is the first to go when space gets tight. */
+  @media (max-width:1400px){ html[data-lang="ka"] body.signed-in .who .role-tag{display:none} }
+  @media (max-width:1150px){ html[data-lang="ka"] body.signed-in .who span:not(.role-tag){display:none} }
+  /* Signed in, the row also carries the user chip and two buttons, and the links
+     stop fitting well above the 880px burger breakpoint — in English as well as
+     Georgian. They fold away here rather than overlapping the switch. */
+  @media (max-width:1100px){ body.signed-in .nav-links{display:none} }
+  /* Signed out the row is lighter, but the Georgian labels are still ~85px wider
+     than the English, which is enough to overrun 900px. They fold one step earlier
+     than English's 880 rather than being allowed to squash. */
+  @media (max-width:960px){ html[data-lang="ka"] .nav-links{display:none} }
 
   /* 8. Dashboard tabs wrap instead of scrolling. The row is overflow-x:auto with
         scrollbar-width:none, which in English just fits — in Georgian the last tab
