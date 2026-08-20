@@ -8,7 +8,11 @@
 <link rel="apple-touch-icon" href="/logo.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Noto Sans Georgian carries the Georgian text. Bricolage, Jakarta and Space Mono
+     have no Georgian glyphs at all, so before this every Georgian character fell back
+     to a system face with unrelated metrics and synthetically-bolded weights — which
+     is what made the translated pages read heavy and cramped. -->
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#ffffff;--bg-soft:#F7F7FB;--ink:#151533;--muted:#6A6A7C;--line:#E5E5EF;
@@ -32,9 +36,12 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth;scrollbar-gutter:stable}
-  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
-  .mono{font-family:'Space Mono',monospace}
-  h1,h2,h3{font-family:'Bricolage Grotesque',sans-serif;line-height:1.05;letter-spacing:-.02em;font-weight:700}
+  /* Georgian face sits AFTER the Latin one in every stack, never before: the
+     browser picks per glyph, so Latin keeps the brand type and only the Georgian
+     characters (absent from Bricolage/Jakarta/Space Mono) fall through to Noto. */
+  body{font-family:'Plus Jakarta Sans','Noto Sans Georgian',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'Space Mono','Noto Sans Georgian',monospace}
+  h1,h2,h3{font-family:'Bricolage Grotesque','Noto Sans Georgian',sans-serif;line-height:1.05;letter-spacing:-.02em;font-weight:700}
   a{color:inherit;text-decoration:none}
   button{font-family:inherit;cursor:pointer;border:none;background:none}
   img{max-width:100%;display:block}
@@ -61,7 +68,7 @@
   /* nav */
   header.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
   .nav-inner{position:relative;display:flex;align-items:center;justify-content:space-between;height:70px}
-  .logo{display:flex;align-items:center;gap:0;font-family:'Bricolage Grotesque';font-weight:800;font-size:1.32rem;letter-spacing:-.03em;cursor:pointer}
+  .logo{display:flex;align-items:center;gap:0;font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:800;font-size:1.32rem;letter-spacing:-.03em;cursor:pointer}
   .logo .mark{width:34px;height:34px;border-radius:10px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(11,11,69,.4)}
   .logo .mark svg{width:26px;height:26px;display:block;transform:translate(0.5px,-0.5px)}
   .logo .mark-img{width:42px;height:42px;object-fit:contain;flex-shrink:0;display:block;position:relative;top:0;margin-right:8px}
@@ -72,7 +79,7 @@
      straight over the logo. Georgian made that obvious. */
   .nav-links{display:flex;align-items:center;gap:1.5rem;margin-left:2.25rem;min-width:0;
     font-weight:500;font-size:.95rem;color:var(--muted)}
-  .nav-links a{transition:color .15s;cursor:pointer}
+  .nav-links a{transition:color .15s;cursor:pointer;white-space:nowrap}
   .nav-links a:hover{color:var(--ink)}
   .nav-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--ink);padding:.35rem;border-radius:8px;align-items:center;justify-content:center}
   .nav-toggle svg{width:26px;height:26px}
@@ -80,7 +87,7 @@
   .nav-cta{display:flex;align-items:center;gap:.7rem;margin-left:auto}
   .who{display:flex;align-items:center;gap:.6rem;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
   .who:hover{opacity:.7}
-  .who .role-tag{font-family:'Space Mono';font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;background:var(--violet-soft);color:var(--violet-deep);padding:.2rem .5rem;border-radius:var(--r-pill)}
+  .who .role-tag{font-family:'Space Mono','Noto Sans Georgian';font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;background:var(--violet-soft);color:var(--violet-deep);padding:.2rem .5rem;border-radius:var(--r-pill)}
 
   /* views */
   .view{display:none;animation:fade .4s ease}
@@ -119,7 +126,7 @@
   .hero-stats{display:flex;gap:0;margin-top:1.7rem;flex-wrap:wrap}
   .hero-stat{padding-right:1.9rem}
   .hero-stat+.hero-stat{padding-left:1.9rem;border-left:1px solid rgba(255,255,255,.14)}
-  .hero-stat .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.65rem;line-height:1;background:linear-gradient(90deg,#fff,#B9B9F0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero-stat .n{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:800;font-size:1.65rem;line-height:1;background:linear-gradient(90deg,#fff,#B9B9F0);-webkit-background-clip:text;background-clip:text;color:transparent}
   .hero-stat .l{display:block;margin-top:.4rem;font-size:.78rem;color:#A9A9C8;letter-spacing:.02em}
   .hero-note{margin-top:1.3rem;font-size:.85rem;color:#A9A9C8;display:flex;align-items:center;gap:.5rem}
   .avatars{display:flex}
@@ -133,8 +140,8 @@
      viewport and scrolled the whole page sideways. */
   .pcard .phead{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
     flex-wrap:wrap;margin-bottom:1rem}
-  .pcard .ptitle{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.05rem;min-width:0}
-  .pcard .pstep{font-family:'Space Mono';font-size:.72rem;color:var(--violet-deep);background:var(--violet-soft);padding:.25rem .6rem;border-radius:var(--r-pill)}
+  .pcard .ptitle{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:700;font-size:1.05rem;min-width:0}
+  .pcard .pstep{font-family:'Space Mono','Noto Sans Georgian';font-size:.72rem;color:var(--violet-deep);background:var(--violet-soft);padding:.25rem .6rem;border-radius:var(--r-pill)}
   .chiprow{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
   .chiprow.marquee{flex-wrap:nowrap;overflow:hidden;width:100%;min-width:0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
   .chip-track{display:flex;gap:.5rem;width:max-content;animation:chipscroll 30s linear infinite;will-change:transform;backface-visibility:hidden}
@@ -164,7 +171,7 @@
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
   .step{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:2rem 1.6rem;position:relative;transition:transform .2s,box-shadow .2s}
   .step:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
-  .step .num{font-family:'Space Mono';font-weight:700;font-size:.85rem;color:var(--violet);letter-spacing:.05em}
+  .step .num{font-family:'Space Mono','Noto Sans Georgian';font-weight:700;font-size:.85rem;color:var(--violet);letter-spacing:.05em}
   .step .ico{width:48px;height:48px;border-radius:14px;background:var(--grad);display:grid;place-items:center;color:#fff;margin:1rem 0 1.1rem;box-shadow:0 8px 20px rgba(11,11,69,.28)}
   .step .ico svg{width:24px;height:24px}
   .step h3{font-size:1.22rem;margin-bottom:.5rem}
@@ -223,7 +230,7 @@
   .page li svg{width:20px;height:20px;color:var(--violet);flex-shrink:0;margin-top:.15rem}
   .contact-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;margin:1.2rem 0 1.8rem}
   .contact-card{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r-sm);padding:.8rem .95rem}
-  .contact-card .lab{font-family:'Space Mono';font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .contact-card .lab{font-family:'Space Mono','Noto Sans Georgian';font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
   .contact-card a,.contact-card span{display:block;font-weight:700;font-size:.92rem;margin-top:.2rem;color:var(--ink)}
   .contact-card a:hover{color:var(--violet)}
   /* flow pages */
@@ -287,7 +294,7 @@
   .flow-sub{text-align:center;color:var(--muted);margin:.6rem auto 0;max-width:42ch}
   .progress{display:flex;align-items:center;justify-content:center;gap:.5rem;margin:1.8rem auto 2rem}
   .pnode{display:flex;align-items:center;gap:.5rem}
-  .pdot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:'Space Mono';font-size:.8rem;font-weight:700;background:var(--silver-soft);color:var(--muted);border:1px solid var(--line);transition:all .3s}
+  .pdot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:'Space Mono','Noto Sans Georgian';font-size:.8rem;font-weight:700;background:var(--silver-soft);color:var(--muted);border:1px solid var(--line);transition:all .3s}
   .pdot.active{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 6px 14px rgba(11,11,69,.35)}
   .pdot.done{background:var(--violet-soft);color:var(--violet-deep);border-color:var(--violet-100)}
   .pseg{width:42px;height:2px;background:var(--line)}
@@ -361,7 +368,7 @@
   .tab{padding:.6rem .7rem;font-weight:600;font-size:.88rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;display:flex;align-items:center;gap:.35rem;white-space:nowrap;flex-shrink:0}
   .tab:hover{color:var(--ink)}
   .tab.on{color:var(--violet-deep);border-bottom-color:var(--violet)}
-  .tab .count{font-family:'Space Mono';font-size:.7rem;background:var(--violet-soft);color:var(--violet-deep);padding:.05rem .45rem;border-radius:var(--r-pill)}
+  .tab .count{font-family:'Space Mono','Noto Sans Georgian';font-size:.7rem;background:var(--violet-soft);color:var(--violet-deep);padding:.05rem .45rem;border-radius:var(--r-pill)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.2rem}
   .tcard{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:1.3rem;display:flex;flex-direction:column;gap:.7rem}
   .tcard .top{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
@@ -371,7 +378,7 @@
   .tcard .tphoto{border-radius:var(--r-sm);border:1px solid var(--line);height:110px;object-fit:cover;width:100%}
   .tcard .meta{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem;font-size:.85rem;color:var(--muted)}
   .tcard .meta b{color:var(--ink)}
-  .badge{font-size:.72rem;font-weight:700;line-height:1;padding:.32rem .6rem;border-radius:var(--r-pill);text-transform:uppercase;letter-spacing:.03em;font-family:'Space Mono';white-space:nowrap;flex-shrink:0}
+  .badge{font-size:.72rem;font-weight:700;line-height:1;padding:.32rem .6rem;border-radius:var(--r-pill);text-transform:uppercase;letter-spacing:.03em;font-family:'Space Mono','Noto Sans Georgian';white-space:nowrap;flex-shrink:0}
   .b-submitted{background:var(--info-soft);color:var(--info)}
   .b-price_countered{background:var(--warn-soft);color:var(--warn)}
   .b-client_countered{background:var(--info-soft);color:var(--info)}
@@ -380,11 +387,11 @@
   .b-work_done{background:var(--info-soft);color:var(--info)}
   .b-completed{background:var(--ok-soft);color:var(--ok)}
   .b-declined,.b-cancelled{background:var(--silver-soft);color:var(--muted)}
-  .price{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem}
+  .price{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:800;font-size:1.3rem}
   .offer-line{font-size:.98rem}
-  .offer-line b{font-family:'Bricolage Grotesque';font-size:1.15rem}
+  .offer-line b{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-size:1.15rem}
   .offer-total{background:var(--violet-soft);border-radius:var(--r-sm);padding:.6rem .8rem;font-size:.92rem;margin:0 0 1rem}
-  .offer-total b{font-family:'Bricolage Grotesque';font-size:1.15rem}
+  .offer-total b{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-size:1.15rem}
   .offer-total span{color:var(--muted);font-size:.82rem}
   .card-actions{display:flex;gap:.55rem;flex-wrap:wrap}
   .paid-tag{display:inline-flex;align-items:center;gap:.35rem;width:max-content;font-weight:700;font-size:.82rem;color:var(--ok);background:var(--ok-soft);padding:.32rem .7rem;border-radius:var(--r-pill)}
@@ -429,13 +436,13 @@
   .fp-meta{display:flex;flex-wrap:wrap;gap:.45rem}
   .fp-tag{font-size:.79rem;font-weight:600;color:var(--ink);background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r-pill);padding:.28rem .7rem}
   .fp-group{display:flex;flex-direction:column;gap:.5rem}
-  .fp-skills-lab{font-family:'Space Mono';font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  .fp-skills-lab{font-family:'Space Mono','Noto Sans Georgian';font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
   .fp-skills{display:flex;flex-wrap:wrap;gap:.4rem}
   .fp-skill{font-size:.79rem;font-weight:600;color:var(--violet-deep);background:var(--violet-soft);border-radius:var(--r-pill);padding:.28rem .7rem}
   .fp-stats{display:flex;margin-top:auto;border-top:1px solid var(--line);padding-top:.9rem}
   .fp-stat{flex:1;text-align:center}
   .fp-stat+.fp-stat{border-left:1px solid var(--line)}
-  .fp-stat .n{display:block;font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem;color:var(--ink);line-height:1}
+  .fp-stat .n{display:block;font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:800;font-size:1.3rem;color:var(--ink);line-height:1}
   .fp-stat .l{font-size:.71rem;color:var(--muted);display:block;margin-top:.28rem}
   .review-fixed b{color:var(--ink)}
   .review-fixed svg{width:15px;height:15px;color:var(--ok);flex-shrink:0}
@@ -462,7 +469,7 @@
   .ev .dot{color:var(--violet);font-weight:700;line-height:1.5}
   .ev b{color:var(--ink);font-weight:600}
   .ev-body{display:flex;flex-direction:column;gap:.1rem;min-width:0}
-  .ev-time{font-family:'Space Mono';font-weight:700;font-size:.73rem;color:var(--ink);letter-spacing:.01em}
+  .ev-time{font-family:'Space Mono','Noto Sans Georgian';font-weight:700;font-size:.73rem;color:var(--ink);letter-spacing:.01em}
   .toggle-ev{font-size:.82rem;color:var(--violet-deep);font-weight:600;cursor:pointer;width:max-content}
   .empty{text-align:center;color:var(--muted);padding:3rem 1rem;border:2px dashed var(--line);border-radius:var(--r);background:var(--bg-soft)}
   .empty svg{width:40px;height:40px;color:var(--silver);margin:0 auto 1rem}
@@ -471,7 +478,7 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.7rem;margin-bottom:1.4rem}
   .stat{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:.6rem .85rem}
-  .stat .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem;line-height:1.1}
+  .stat .n{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:800;font-size:1.3rem;line-height:1.1}
   .stat .l{color:var(--muted);font-size:.78rem;font-weight:600}
   table.users{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
   table.users th,table.users td{text-align:left;padding:.85rem 1rem;font-size:.92rem;border-bottom:1px solid var(--line)}
@@ -482,7 +489,7 @@
   table.users tr:last-child td{border-bottom:none}
   /* keep Qualifications narrow so Name/Email/etc get more room */
   table.users th:nth-child(5),table.users td:nth-child(5){width:430px;white-space:normal;word-break:break-word}
-  .role-chip{font-family:'Space Mono';font-size:.72rem;text-transform:uppercase;padding:.18rem .55rem;border-radius:var(--r-pill);font-weight:700}
+  .role-chip{font-family:'Space Mono','Noto Sans Georgian';font-size:.72rem;text-transform:uppercase;padding:.18rem .55rem;border-radius:var(--r-pill);font-weight:700}
   .rc-admin{background:#0B0B45;color:#fff}
   .rc-manager{background:var(--violet-soft);color:var(--violet-deep)}
   .rc-fixer{background:var(--info-soft);color:var(--info)}
@@ -638,7 +645,7 @@
      and the comparisons don't line up across cards. */
   .an-tile{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:1rem 1.1rem 1.05rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column}
   .an-tile.an-lead{background:var(--grad);border-color:transparent;color:#fff}
-  .an-tile-v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1.72rem;letter-spacing:-.02em;line-height:1.1}
+  .an-tile-v{font-family:'Bricolage Grotesque','Noto Sans Georgian',sans-serif;font-weight:700;font-size:1.72rem;letter-spacing:-.02em;line-height:1.1}
   .an-tile.an-lead .an-tile-v{font-size:2.1rem}
   .an-tile-l{font-size:.85rem;font-weight:600;margin-top:.18rem}
   .an-tile-h{font-size:.78rem;color:var(--muted);margin-top:.1rem}
@@ -698,9 +705,9 @@
   /* mini stat strip inside a card */
   .an-mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:.7rem;margin-bottom:.9rem}
   .an-mini>div{background:var(--bg-soft);border-radius:var(--r-sm);padding:.6rem .7rem}
-  .an-mini-v{display:block;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1.12rem;letter-spacing:-.02em}
+  .an-mini-v{display:block;font-family:'Bricolage Grotesque','Noto Sans Georgian',sans-serif;font-weight:700;font-size:1.12rem;letter-spacing:-.02em}
   .an-mini-l{display:block;font-size:.76rem;color:var(--muted);margin-top:.08rem;line-height:1.3}
-  .an-hero-figure{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6rem;letter-spacing:-.03em;line-height:1;color:var(--violet)}
+  .an-hero-figure{font-family:'Bricolage Grotesque','Noto Sans Georgian',sans-serif;font-weight:800;font-size:2.6rem;letter-spacing:-.03em;line-height:1;color:var(--violet)}
   .an-hero-figure span{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--muted);letter-spacing:0;margin-top:.3rem}
 
   /* tables (the accessible view of every chart) */
@@ -782,18 +789,74 @@
     .lang-btn{min-width:47px;height:27px;padding:0 .55rem;font-size:.75rem}
     .lang-btn[data-lang-btn="ka"]{font-size:.78rem}
   }
-  /* Georgian runs ~20% longer than the English, has no capitals, and its letter
-     shapes need a little vertical room. So: no negative tracking (which was tuned
-     for Latin), slightly tighter type than the English at the same breakpoint so
-     the longer strings still fit, and enough line-height not to crowd. */
-  html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{letter-spacing:0}
-  html[data-lang="ka"] h1{line-height:1.16}
-  html[data-lang="ka"] h2,html[data-lang="ka"] h3{line-height:1.22}
-  html[data-lang="ka"] .hero h1{font-size:clamp(1.75rem,3.15vw,2.5rem)}
-  html[data-lang="ka"] .hero p.lede{font-size:1rem;max-width:40ch}
-  html[data-lang="ka"] .btn{line-height:1.35}
-  html[data-lang="ka"] .nav-links{gap:1.15rem;font-size:.9rem;margin-left:1.5rem}
+  /* ---------- Georgian typography ----------
+     Treated as its own setting rather than the Latin one with the strings swapped.
+     Georgian is a unicameral script: no capitals, a smaller apparent x-height, tall
+     round letterforms with real ascenders and descenders, and words ~20% longer.
+     What that means in practice, and what each rule below is for. */
+
+  /* 1. Tracking. The Latin scale uses negative tracking to tighten Bricolage;
+        on Georgian that collapses the counters and is the main reason it read
+        as "messy". Zero everywhere, never negative. */
+  html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3,
+  html[data-lang="ka"] .logo{letter-spacing:0}
+
+  /* 2. Leading. Ascenders and descenders collide at the Latin line-heights, so
+        everything opens up — this is most of the "room to breathe". */
+  html[data-lang="ka"] body{line-height:1.72}
+  html[data-lang="ka"] p,html[data-lang="ka"] li{line-height:1.75}
+  html[data-lang="ka"] h1{line-height:1.26}
+  html[data-lang="ka"] h2,html[data-lang="ka"] h3{line-height:1.34}
+
+  /* 3. Weight. Noto's 800 is considerably heavier than Bricolage's at the same
+        number; 700 carries the same emphasis without going blocky. */
+  html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{font-weight:700}
+  html[data-lang="ka"] .hero-stat .n{font-weight:700}
+
+  /* 4. Size. Georgian sits optically smaller than Latin at an equal font-size,
+        so body copy comes up slightly while headings come down — the long strings
+        still have to fit the same boxes. */
+  html[data-lang="ka"] body{font-size:1.02rem}
+  html[data-lang="ka"] .hero h1{font-size:clamp(1.75rem,3.1vw,2.45rem)}
+  html[data-lang="ka"] .hero p.lede{font-size:1.02rem;line-height:1.7;max-width:42ch}
+
+  /* 5. No faked capitals. text-transform:uppercase does nothing to Mkhedruli
+        (or worse, flips it to Mtavruli), and the wide tracking that goes with a
+        Latin small-caps label just fragments the word. */
+  html[data-lang="ka"] .eyebrow,html[data-lang="ka"] .foot-col h4,
+  html[data-lang="ka"] .who .role-tag,html[data-lang="ka"] .contact-card .lab,
+  html[data-lang="ka"] .pcard .pstep,html[data-lang="ka"] .an-tile-l{
+    text-transform:none;letter-spacing:.01em}
+  html[data-lang="ka"] .eyebrow{font-size:.82rem;padding:.45rem .9rem}
+
+  /* 6. Controls need a little more room for the taller line box. */
+  html[data-lang="ka"] .btn{line-height:1.4;padding-top:.62rem;padding-bottom:.72rem}
+  html[data-lang="ka"] .nav-links{gap:1.3rem;font-size:.92rem;margin-left:1.6rem}
+  html[data-lang="ka"] .tab{line-height:1.4}
+  html[data-lang="ka"] .chip{line-height:1.5}
+
+  /* 7. The header carries more once you are signed in (nav links, the switch, the
+        user chip, two buttons). The Georgian labels are wide enough that the links
+        were being squeezed until they broke mid-phrase, so they fold into the
+        burger earlier here than they do in English. */
+  @media (max-width:1280px){ html[data-lang="ka"] .nav-links{display:none} }
+  /* Signed in there is a user chip and two more buttons in the row, and the wider
+     Georgian labels then collide with the switch even at 1440. The dashboard is
+     the point of the page at that stage, so the marketing links fold away. */
+  @media (max-width:1560px){ html[data-lang="ka"] body.signed-in .nav-links{display:none} }
+
+  /* 8. Dashboard tabs wrap instead of scrolling. The row is overflow-x:auto with
+        scrollbar-width:none, which in English just fits — in Georgian the last tab
+        was cut off at the edge with nothing to indicate more was there. */
+  html[data-lang="ka"] .tabs{flex-wrap:wrap;overflow-x:visible;row-gap:.15rem;
+    justify-content:flex-start;gap:.9rem}
+  html[data-lang="ka"] .tabs.spread{justify-content:flex-start;gap:.6rem}
+
+  /* 9. Dense data views: keep the smaller type but give the rows more height,
+        so tables and charts stay scannable instead of turning into a wall. */
   html[data-lang="ka"] .chart-label,html[data-lang="ka"] .chart-tick{font-size:11px}
+  html[data-lang="ka"] .an-table td,html[data-lang="ka"] .an-table th{line-height:1.55}
+  html[data-lang="ka"] .an-tile-l{line-height:1.45}
 </style>
 </head>
 <body>

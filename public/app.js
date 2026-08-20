@@ -158,6 +158,10 @@ window.addEventListener('popstate', e => {
 /* ---------- nav bar (auth aware) — fills both the desktop bar and the mobile menu ---------- */
 function renderNav() {
   const u = state.user;
+  // Signed in, the header also carries the user chip, Dashboard and Log out.
+  // CSS needs to know, because that is a different amount of room for the
+  // marketing links — and it is much tighter once the labels are translated.
+  document.body.classList.toggle('signed-in', !!u);
   let html;
   if (!u) {
     html = `
