@@ -18,8 +18,13 @@ const availMeta = (v) => AVAIL[v] || AVAIL.available;
 /* Cache the logged-in user locally so a reload shows the right navbar instantly
    (no "logged out then in" flash). The JWT itself stays in the httpOnly cookie. */
 function setAuth(user) {
+  /* Reset the tab only when the person changes. Resetting on every call was safe
+     only while /api/me resolved before the first render; now that the view paints
+     from the cached login first, a late confirmation would otherwise yank an
+     admin back to People after they had already picked a tab. */
+  const changed = (state.user && state.user.id) !== (user && user.id);
   state.user = user;
-  state.dashTab = null;   // reset dashboard tab so each role opens on its default (admin → People)
+  if (changed) state.dashTab = null;   // each role opens on its default (admin → People)
   try { user ? localStorage.setItem('digit_user', JSON.stringify(user)) : localStorage.removeItem('digit_user'); } catch {}
   renderNav();
 }
@@ -1461,11 +1466,16 @@ async function saveProfile(e) {
     else if (cur === 'analytics') mountAnalytics();
   };
 
-  const cats = loadCategories();
+  /* Categories are still awaited: they are cached by the browser now, so on a
+     reload this costs nothing, and the home grid would otherwise paint empty and
+     fill in. /api/me is NOT awaited — it is the slow one, state.user is already
+     restored from the last session, and api() signs out cleanly if the cookie has
+     since expired. That takes a full round trip out of every reload. */
   const me = api('/api/me').then(r => setAuth(r.user)).catch(() => {});
-  await Promise.allSettled([cats, me]);
+  await loadCategories().catch(() => {});
   // Open the view that matches the current URL (deep link / refresh / first load).
   const initialView = VIEW_BY_PATH[location.pathname] || 'home';
   const initialHash = location.hash ? location.hash.slice(1) : null;
   go(initialView, initialHash, false);
+  await me;   // let a stale session settle before anything else runs
 })();

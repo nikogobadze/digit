@@ -163,6 +163,20 @@ const requireRole = (...roles) => (req, res, next) =>
 /* FormData arrays arrive as JSON strings. */
 const parseArr = (v) => { try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return Array.isArray(v) ? v : []; } };
 /* Password policy: 8+ chars, at least one number and one capital letter. */
+/* Local part with no spaces or @, a domain, and a real dot-separated TLD. There
+   was no check at all before: "notanemail", "@nolocal.com" and "trailing@" were
+   all accepted and written to the users table, where they can never be contacted
+   or used to recover the account. Deliberately permissive about the local part —
+   plus-addressing and dots are legitimate — and strict only about the shape. */
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+function emailError(email) {
+  const e = String(email || '').trim();
+  if (!e) return 'Email is required.';
+  if (e.length > 254) return 'That email address is too long.';
+  if (!EMAIL_RE.test(e)) return 'Enter a valid email address.';
+  return null;
+}
+
 function passwordError(pw) {
   pw = pw || '';
   if (pw.length < 8) return 'Password must be at least 8 characters.';
@@ -176,7 +190,14 @@ const setCv = (ref, id) => run('UPDATE users SET cv=? WHERE id=?', [ref, id]);
 /* ==================================================================
    PUBLIC
 ================================================================== */
-app.get('/api/categories', (req, res) => res.json(CATEGORIES)); // no DB — instant
+/* A constant that only changes on deploy, and one of just two requests a reload
+   makes. Letting the browser keep it removes a whole round trip to the function's
+   region from every reload; stale-while-revalidate refreshes it in the background
+   so a deploy is picked up without anyone waiting on it. */
+app.get('/api/categories', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
+  res.json(CATEGORIES);
+}); // no DB — instant
 
 /* Everything below talks to the DB: ensure the schema/seed exist (cold start). */
 app.use('/api', ah(async (req, res, next) => { await ready(); next(); }));
@@ -204,6 +225,7 @@ app.get('/api/reviews', ah(async (req, res) => {
 app.post('/api/auth/register/client', upload.single('avatar'), ah(async (req, res) => {
   const { name, email, phone, password } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
+  const ee = emailError(email); if (ee) return res.status(400).json({ error: ee });
   const pe = passwordError(password); if (pe) return res.status(400).json({ error: pe });
   if (await userByEmail(email.toLowerCase().trim())) return res.status(409).json({ error: 'That email is already registered.' });
   const r = await run(`INSERT INTO users (role,name,email,phone,password_hash) VALUES ('client',?,?,?,?) RETURNING id`,
@@ -218,6 +240,7 @@ app.post('/api/auth/register/client', upload.single('avatar'), ah(async (req, re
 app.post('/api/auth/register/fixer', upload.fields([{ name: 'avatar', maxCount: 1 }, { name: 'cv', maxCount: 1 }]), ah(async (req, res) => {
   const { name, email, password, bio, experience, work_mode } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
+  const ee = emailError(email); if (ee) return res.status(400).json({ error: ee });
   const pe = passwordError(password); if (pe) return res.status(400).json({ error: pe });
   const keys = parseArr((req.body || {}).skills).filter(s => CATEGORY_KEYS.has(s));
   const customs = parseArr((req.body || {}).custom_skills).map(s => String(s || '').trim().slice(0, 40)).filter(Boolean);
@@ -660,6 +683,12 @@ app.post('/api/admin/users/:id/employment', auth, requireRole('admin'), ah(async
 /* ==================================================================
    SPA fallback + errors  (static assets are served near the top)
 ================================================================== */
+/* Anything under /api that reached here matched no route. Without this it fell
+   through to the SPA catch-all below and answered 200 text/html, so a client
+   calling a mistyped or removed endpoint got a page instead of an error and
+   failed on JSON.parse rather than on the status. */
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.use((err, req, res, next) => {

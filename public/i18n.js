@@ -588,6 +588,18 @@ const I18N_PATTERNS = [
   [/^Client cancelled the request — they no longer need help\.$/, () => 'კლიენტმა გააუქმა მოთხოვნა — დახმარება აღარ სჭირდება.'],
   [/^Client confirmed the problem is fixed\. ✅$/, () => 'კლიენტმა დაადასტურა, რომ პრობლემა მოგვარდა. ✅'],
   [/^Client paid ₾(\d+)\. 💳$/, (m) => `კლიენტმა გადაიხადა ₾${m[1]}. 💳`],
+  /* Events the live routes write that the seeded demo data never produces, so
+     they only surfaced once a real task was posted end to end. */
+  [/^Problem posted \((.+?), \+₾(\d+) urgency fee\)\. Waiting for a manager to set a price\.$/,
+    (m) => `პრობლემა გამოგზავნილია (${I18N.t(m[1])}, +₾${m[2]} სასწრაფოების საკომისიო). ველოდებით მენეჯერის ფასს.`],
+  [/^Problem posted \((.+?), free tier\)\. Waiting for a manager to set a price\.$/,
+    (m) => `პრობლემა გამოგზავნილია (${I18N.t(m[1])}, უფასო). ველოდებით მენეჯერის ფასს.`],
+  [/^Client paid ₾(\d+) \(card ending (\d+)\)\. 💳$/,
+    (m) => `კლიენტმა გადაიხადა ₾${m[1]} (ბარათი ბოლოთი ${m[2]}). 💳`],
+  [/^Client rated (.+?) (★+) \((\d)\/5\)(?::\s*(.+))?\.$/,
+    (m) => `კლიენტმა შეაფასა ${m[1]} ${m[2]} (${m[3]}/5)${m[4] ? ': ' + m[4] : ''}.`],
+  [/^Client cancelled the request — they no longer need help\. It has been removed from the worker's jobs\.$/,
+    () => 'კლიენტმა გააუქმა მოთხოვნა — დახმარება აღარ სჭირდება. დავალება მოხსნილია სპეციალისტის სიიდან.'],
   [/^(.+) marked the work as done\. Waiting for the client to confirm\.$/,
     (m) => `${i18nActor(m[1])} სამუშაო დასრულებულად მონიშნა. ველოდებით კლიენტის დადასტურებას.`],
   [/^(.+) assigned (.+) to this task\. (.+) is now marked Busy\.$/,
