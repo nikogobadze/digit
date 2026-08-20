@@ -462,7 +462,11 @@
   .review-fixed{display:flex;align-items:center;gap:.4rem;font-size:.84rem;color:var(--muted)}
   /* fixer profiles page (manager/admin) */
   #view-fixers .page{padding:1.25rem 0 3rem}
-  #view-fixers .back{position:static;margin-bottom:1.1rem}
+  /* .page .back is absolutely positioned at the top-left, which works for the
+     narrow flow pages where the card below starts lower. These two are full-width
+     pages whose heading starts at the top, so the back control has to stay in the
+     flow or it lands on top of the h1. */
+  #view-fixers .back,#view-analytics .back{position:static;margin-bottom:1.1rem}
   .fixers-head{margin-bottom:1.6rem}
   .fixers-head h1{font-size:1.9rem}
   .fixers-head p{margin-top:.35rem}
