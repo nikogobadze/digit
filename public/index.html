@@ -798,6 +798,10 @@
     .an-tile.an-lead .an-tile-h,.an-tile.an-lead .an-delta-sub{color:var(--muted)}
   }
 
+  /* Analytics and Worker profiles sit together in the dashboard header: both are
+     separate pages, unlike the tabs, which are all slices of the same task list. */
+  .dash-head-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+
   /* ---------- language switch ---------- */
   /* A segmented capsule. The track is a soft inset well and the active segment a
      raised pill, so which side is live reads at a glance rather than from colour
@@ -1282,6 +1286,17 @@
 </main>
 
 <!-- ================= FIXER PROFILES (manager/admin) ================= -->
+<main id="view-analytics" class="view">
+  <div class="page"><div class="wrap">
+    <button class="back" data-go="dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to dashboard</button>
+    <div class="dash-head"><div>
+      <h1>Analytics</h1>
+      <p>How the business is doing — money, throughput, workers and clients.</p>
+    </div></div>
+    <div id="analytics-root"><!-- filled by analytics.js --></div>
+  </div></div>
+</main>
+
 <main id="view-fixers" class="view">
   <div class="page"><div class="wrap">
     <button class="back" data-go="dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to dashboard</button>

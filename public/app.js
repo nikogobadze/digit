@@ -100,9 +100,9 @@ function closeModal() { $('#modal-bg').classList.remove('show'); }
 $('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
 
 /* ---------- navigation ---------- */
-const VIEWS = ['home','login','registerClient','registerFixer','post','dashboard','about','profile','reviews','fixers'];
+const VIEWS = ['home','login','registerClient','registerFixer','post','dashboard','about','profile','reviews','fixers','analytics'];
 /* Each view maps to a real URL so the browser's Back/Forward buttons work. */
-const PATHS = { home:'/', login:'/login', registerClient:'/signup', registerFixer:'/join', post:'/post', dashboard:'/dashboard', about:'/about', profile:'/profile', reviews:'/reviews', fixers:'/fixers' };
+const PATHS = { home:'/', login:'/login', registerClient:'/signup', registerFixer:'/join', post:'/post', dashboard:'/dashboard', about:'/about', profile:'/profile', reviews:'/reviews', fixers:'/fixers', analytics:'/analytics' };
 const VIEW_BY_PATH = Object.fromEntries(Object.entries(PATHS).map(([v, p]) => [p, v]));
 
 function showView(view) {
@@ -126,11 +126,16 @@ function go(view, hash, push = true) {
     toast('Worker profiles are for managers and admins.');
     return go(state.user ? 'dashboard' : 'login', null, push);
   }
+  if (view === 'analytics' && !(state.user && ['manager', 'admin'].includes(state.user.role))) {
+    toast('Analytics is for managers and admins.');
+    return go(state.user ? 'dashboard' : 'login', null, push);
+  }
   showView(view);
   if (view === 'dashboard') renderDashboard();
   if (view === 'profile') renderProfile();
   if (view === 'reviews') renderReviews();
   if (view === 'fixers') renderFixers();
+  if (view === 'analytics') mountAnalytics();
   const url = (PATHS[view] || '/') + (hash ? '#' + hash : '');
   if (push) history.pushState({ view, hash: hash || null }, '', url);
   else history.replaceState({ view, hash: hash || null }, '', url);
@@ -519,9 +524,8 @@ setInterval(() => {
   if (!state.user) return;
   if (!$('#view-dashboard').classList.contains('active')) return;
   if ($('#modal-bg').classList.contains('show')) return;   // don't interrupt a review
-  // Analytics runs aggregate queries and owns its own 10-minute refresh (plus a
-  // Refresh button) — re-running all of it every 10s would be pure waste.
-  if (state.dashTab === 'analytics') return;
+  // Analytics is its own view now, so this poll never runs while it is open — it
+  // keeps its own 10-minute refresh, which is the right cadence for aggregates.
   const a = document.activeElement;                         // don't yank focus mid-interaction
   if (a && $('#dash-root').contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)) return;
   if ($('#dash-root').querySelector('.events.show')) return; // don't collapse activity the user opened
@@ -702,21 +706,14 @@ function groupCards(groups, active) {
 async function renderManager(root) {
   const { tasks } = await api('/api/manager/all');
   const groups = bucketize(tasks);
-  const keys = [...TASK_GROUPS.map(g => g.key), 'analytics'];
+  const keys = TASK_GROUPS.map(g => g.key);
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'queue';
-  // A manager's Analytics tab covers only the tasks they managed, and the
-  // server leaves every money figure out of their payload.
-  const body = tab === 'analytics'
-    ? `<div id="analytics-root">${loadingBox('Crunching the numbers…')}</div>`
-    : `<div class="grid">${groupCards(groups, tab)}</div>`;
   root.innerHTML = `
     <div class="dash-head"><div><h1>Manager dashboard</h1><p>Review new problems, set fair prices, route to workers.</p></div>
       ${seeFixersBtn()}</div>
-    <div class="tabs spread">${groupTabsHtml(groups, tab)}
-      <div class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">Analytics</div></div>
-    ${body}`;
+    <div class="tabs spread">${groupTabsHtml(groups, tab)}</div>
+    <div class="grid">${groupCards(groups, tab)}</div>`;
   wireTabs(root);
-  if (tab === 'analytics') mountAnalytics();
 }
 function managerQueueCard(t) {
   return cardShell(t, `
@@ -1018,20 +1015,15 @@ async function openCounterReply(id) {
 
 /* ---------- ADMIN ---------- */
 async function renderAdmin(root) {
-  const keys = ['people', 'analytics', ...TASK_GROUPS.map(g => g.key)];
+  const keys = ['people', ...TASK_GROUPS.map(g => g.key)];
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'people';
   const { tasks } = await api('/api/manager/all');
   const groups = bucketize(tasks);
-  const tabsHtml = `<div class="tab ${tab==='people'?'on':''}" data-tab="people">People</div>
-    <div class="tab ${tab==='analytics'?'on':''}" data-tab="analytics">Analytics</div>${groupTabsHtml(groups, tab)}`;
+  const tabsHtml = `<div class="tab ${tab==='people'?'on':''}" data-tab="people">People</div>${groupTabsHtml(groups, tab)}`;
   let body;
   if (tab === 'people') {
     const { users } = await api('/api/admin/users');
     body = adminPeople(users);
-  } else if (tab === 'analytics') {
-    // Placeholder now, filled by mountAnalytics() — the tabs stay responsive
-    // while the aggregate queries run.
-    body = `<div id="analytics-root">${loadingBox('Crunching the numbers…')}</div>`;
   } else {
     body = `<div class="grid">${groupCards(groups, tab)}</div>`;
   }
@@ -1042,7 +1034,6 @@ async function renderAdmin(root) {
     ${body}`;
   wireTabs(root);
   if (tab === 'people') wireRoleSelects();
-  if (tab === 'analytics') mountAnalytics();
 }
 // Fixed order: admins → managers → fixers → clients, A–Z within each group.
 const ROLE_RANK = { admin: 0, manager: 1, fixer: 2, client: 3 };
@@ -1192,10 +1183,18 @@ function reviewCard(r) {
 }
 
 /* ---------- FIXER PROFILES (manager / admin) ---------- */
+/* The two places a manager or admin goes that are not a task queue. They sit
+   together in the dashboard header rather than in the tab row, because the tabs
+   are all slices of the same task list and these two are separate pages. */
 function seeFixersBtn() {
-  return `<button class="btn btn-primary" data-go="fixers">
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Worker profiles</button>`;
+  return `<div class="dash-head-actions">
+    <button class="btn btn-ghost" data-go="analytics">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l3.5-4 3 2.5L21 6"/></svg>
+      Analytics</button>
+    <button class="btn btn-primary" data-go="fixers">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Worker profiles</button>
+  </div>`;
 }
 async function renderFixers() {
   const root = $('#fixers-root');
@@ -1368,6 +1367,7 @@ async function saveProfile(e) {
     else if (cur === 'profile') renderProfile();
     else if (cur === 'reviews') renderReviews();
     else if (cur === 'fixers') renderFixers();
+    else if (cur === 'analytics') mountAnalytics();
   };
 
   const cats = loadCategories();

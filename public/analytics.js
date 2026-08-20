@@ -80,6 +80,9 @@ async function mountAnalytics() {
   const host = document.getElementById('analytics-root');
   if (!host) return;
   const r = anRange();
+  // Only on a cold mount. The 10-minute auto-refresh and the range buttons
+  // re-enter here too, and blanking the page each time would flash.
+  if (!host.firstElementChild) host.innerHTML = loadingBox('Crunching the numbers…');
   try {
     const data = await api(`/api/analytics?from=${r.from}&to=${r.to}`);
     host.innerHTML = analyticsHTML(data);

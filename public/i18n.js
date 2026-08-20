@@ -276,6 +276,9 @@ const I18N_KA = {
   'Manage people and triage tasks by state.': 'მართეთ მომხმარებლები და დაალაგეთ დავალებები სტატუსით.',
   'Worker profiles': 'სპეციალისტების პროფილები',
   'Worker profiles are for managers and admins.': 'სპეციალისტების პროფილები მენეჯერებისა და ადმინებისთვისაა.',
+  'Analytics is for managers and admins.': 'ანალიტიკა მენეჯერებისა და ადმინებისთვისაა.',
+  'How the business is doing — money, throughput, workers and clients.':
+    'როგორ მიდის ბიზნესი — თანხები, გამტარობა, სპეციალისტები და კლიენტები.',
   'Who can do what — skills, availability, ratings and stats to help you assign the right person.':
     'ვინ რას აკეთებს — უნარები, ხელმისაწვდომობა, შეფასებები და სტატისტიკა სწორი ადამიანის შესარჩევად.',
   'Can fix': 'შეუძლია შეკეთება',
