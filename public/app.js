@@ -102,24 +102,82 @@ async function api(path, { method, body, form } = {}) {
    clicking a tab and seeing it. Reads are cached briefly, every write clears the
    cache, and the background poll passes fresh=true so the screen still updates
    on its own. Concurrent callers share one in-flight request instead of racing. */
-const API_TTL = 20000;
+const API_TTL = 20000;        // treat as fresh
+const API_MAX_STALE = 300000; // usable while a refresh runs
 const apiCache = new Map();      // path -> { at, data }
 const apiInflight = new Map();   // path -> Promise
 
-async function apiCached(path, fresh = false) {
-  if (!fresh) {
-    const hit = apiCache.get(path);
-    if (hit && Date.now() - hit.at < API_TTL) return hit.data;
-    const flying = apiInflight.get(path);
-    if (flying) return flying;
-  }
+/* Survives a reload. Without this every refresh stared at a spinner for a whole
+   round trip to the function's region before anything appeared; with it the last
+   view is on screen immediately and the fresh copy replaces it when it lands.
+   Namespaced per user so one account never sees another's cached data, and
+   sessionStorage rather than localStorage so it dies with the tab. */
+const cacheKey = () => `digit.cache.${(state.user && state.user.id) || 'anon'}`;
+function persistCache() {
+  try {
+    const out = {};
+    for (const [k, v] of apiCache) out[k] = v;
+    sessionStorage.setItem(cacheKey(), JSON.stringify(out));
+  } catch (e) {}
+}
+function hydrateCache() {
+  try {
+    const raw = sessionStorage.getItem(cacheKey());
+    if (!raw) return;
+    for (const [k, v] of Object.entries(JSON.parse(raw))) {
+      if (v && typeof v.at === 'number' && Date.now() - v.at < API_MAX_STALE) apiCache.set(k, v);
+    }
+  } catch (e) {}
+}
+
+function refetch(path) {
   const p = api(path)
-    .then(d => { apiCache.set(path, { at: Date.now(), data: d }); apiInflight.delete(path); return d; })
+    .then(d => {
+      apiCache.set(path, { at: Date.now(), data: d });
+      apiInflight.delete(path);
+      persistCache();
+      return d;
+    })
     .catch(e => { apiInflight.delete(path); throw e; });
   apiInflight.set(path, p);
   return p;
 }
-function clearApiCache() { apiCache.clear(); apiInflight.clear(); }
+
+async function apiCached(path, fresh = false) {
+  if (!fresh) {
+    const hit = apiCache.get(path);
+    const age = hit ? Date.now() - hit.at : Infinity;
+    if (hit && age < API_TTL) return hit.data;
+    /* Stale but recent: hand back what we have so the screen fills at once, and
+       refresh behind it. The re-render is left to the caller's own refresh cycle
+       rather than forced here, so nothing repaints under the user mid-interaction. */
+    if (hit && age < API_MAX_STALE) { refetch(path).then(() => scheduleStaleRepaint()).catch(() => {}); return hit.data; }
+    const flying = apiInflight.get(path);
+    if (flying) return flying;
+  }
+  return refetch(path);
+}
+
+/* One repaint after a background refresh, and only when the dashboard is the
+   thing on screen and the user is not in the middle of something. */
+let staleRepaint = null;
+function scheduleStaleRepaint() {
+  if (staleRepaint) return;
+  staleRepaint = setTimeout(() => {
+    staleRepaint = null;
+    if (!$('#view-dashboard').classList.contains('active')) return;
+    if ($('#modal-bg').classList.contains('show')) return;
+    const a = document.activeElement;
+    if (a && $('#dash-root').contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)) return;
+    renderDashboard(true);
+  }, 80);
+}
+
+function clearApiCache() {
+  apiCache.clear();
+  apiInflight.clear();
+  try { sessionStorage.removeItem(cacheKey()); } catch (e) {}
+}
 
 let toastTimer;
 function toast(msg, bad = false) {
@@ -1450,6 +1508,7 @@ async function saveProfile(e) {
 ================================================================== */
 (async function init() {
   state.user = readAuthCache();      // instantly restore the last-known login (no flash)
+  hydrateCache();                    // and the data that login was last looking at
   renderNav();
   // Confirm with the server + load categories in parallel.
   /* Called by i18n.js after the language switch. The DOM translator handles all
