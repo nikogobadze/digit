@@ -162,7 +162,9 @@
     background:linear-gradient(180deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.20) 100%);
     border-color:rgba(255,255,255,.68);
     box-shadow:0 14px 32px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.36)}
-  .hero-stats{display:flex;gap:0;margin-top:1.7rem;flex-wrap:wrap}
+  /* row-gap matters: with gap:0 a wrapped stat sat flush under the label above it
+     and the two collided. Georgian wraps here at widths English does not. */
+  .hero-stats{display:flex;gap:0;row-gap:1.15rem;margin-top:1.7rem;flex-wrap:wrap}
   .hero-stat{padding-right:1.9rem}
   .hero-stat+.hero-stat{padding-left:1.9rem;border-left:1px solid rgba(255,255,255,.14)}
   .hero-stat .n{font-family:'Bricolage Grotesque','Noto Sans Georgian';font-weight:800;font-size:1.65rem;line-height:1;background:linear-gradient(90deg,#fff,#B9B9F0);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -240,7 +242,6 @@
   /* content pages (About / Trust / Contact) */
   .page{padding:1rem 0 5rem;min-height:70vh}
   .page .wrap{position:relative}
-  .page .back{position:absolute;top:0;left:0;z-index:2}
   .page-body{max-width:760px;margin:0 auto}
   #view-about .input{padding:.55rem 1rem .69rem}
   #view-about .field .lab{margin-bottom:.35rem}
@@ -248,7 +249,6 @@
   #view-about textarea{min-height:96px}
   /* Profile page: same compact design as the registration / post pages */
   #view-profile .wrap{position:relative}
-  #view-profile .back{position:absolute;top:0;left:0;z-index:2}
   #view-profile .flow{padding:1rem 0 1.25rem;min-height:0}
   #view-profile .flow-card{max-width:620px;margin-top:0;padding:1.6rem 2.4rem}
   #view-profile .flow-title{font-size:1.55rem}
@@ -274,13 +274,20 @@
   .contact-card a:hover{color:var(--violet)}
   /* flow pages */
   .flow{padding:1.75rem 0 5rem;min-height:70vh}
-  .back{display:inline-flex;align-items:center;gap:.4rem;color:var(--muted);font-weight:600;font-size:.9rem;cursor:pointer}
+  /* Always in the flow, never absolutely positioned. It used to be pinned to the
+     top-left of .wrap on every page, which only worked where the content below
+     happened to start lower — on About, Reviews and the two full-width pages it
+     landed on the heading. Six views each needed their own override and the bug
+     came back with every new page. One rule now: it sits above the heading and
+     reserves its own space. */
+  .back{display:inline-flex;align-items:center;gap:.4rem;color:var(--muted);font-weight:600;
+    font-size:.9rem;cursor:pointer;margin-bottom:1.15rem;align-self:flex-start;width:fit-content}
   .back:hover{color:var(--ink)}
+  .back svg{flex-shrink:0}
   .flow-card{max-width:680px;margin:1.5rem auto 0;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:2.4rem}
   .flow-card.narrow{max-width:460px}
   /* Sign up / Join pages: lift the card to sit level with the Back home arrow */
   #view-registerClient .wrap,#view-registerFixer .wrap{position:relative}
-  #view-registerClient .back,#view-registerFixer .back{position:absolute;top:0;left:0;z-index:2}
   /* shorter inputs + even spacing */
   #view-registerClient .input,#view-registerFixer .input{padding:.55rem 1rem .69rem}
   #view-registerClient .field .lab,#view-registerFixer .field .lab{margin-bottom:.35rem}
@@ -304,7 +311,6 @@
   #view-registerFixer .flow-actions{margin-top:1.5rem}
   /* Post a problem page: same compact spacing as the registration pages */
   #view-post .wrap{position:relative}
-  #view-post .back{position:absolute;top:0;left:0;z-index:2}
   #view-post .flow{padding:1rem 0 1.25rem;min-height:0}
   #view-post .flow-card{margin-top:0;padding:1.6rem 2.4rem}
   #view-post .flow-title{font-size:1.55rem}
@@ -318,7 +324,6 @@
   #view-post .flow-actions .btn{padding-top:.66rem;padding-bottom:.78rem}
   /* Log in page: same compact spacing as the registration pages */
   #view-login .wrap{position:relative}
-  #view-login .back{position:absolute;top:0;left:0;z-index:2}
   #view-login .flow{padding:1rem 0 1.25rem;min-height:0}
   #view-login .flow-card{margin-top:0;padding:1.6rem 2.4rem}
   #view-login .flow-title{font-size:1.55rem}
@@ -483,7 +488,6 @@
      narrow flow pages where the card below starts lower. These two are full-width
      pages whose heading starts at the top, so the back control has to stay in the
      flow or it lands on top of the h1. */
-  #view-fixers .back,#view-analytics .back{position:static;margin-bottom:1.1rem}
   .fixers-head{margin-bottom:1.6rem}
   .fixers-head h1{font-size:1.9rem}
   .fixers-head p{margin-top:.35rem}
@@ -618,6 +622,11 @@
   .foot-bottom{margin-top:2.4rem;padding-top:1.4rem;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem;flex-wrap:wrap;gap:.6rem}
 
   @media(max-width:880px){
+    /* The hero stops being two columns here, so the preview slides under the copy
+       and these decorative badges (ft1 is offset -42px above the card) ride up into
+       the paragraph above. They used to be hidden only below 560, leaving them
+       grazing the text through the whole range in between. */
+    .float-tag{display:none}
     .nav-links{display:none}.hero-grid{grid-template-columns:1fr;gap:2.5rem}
     .preview{max-width:min(420px,100%);margin:0 auto}.steps{grid-template-columns:1fr}.step .line{display:none}
     .cats{grid-template-columns:1fr 1fr}.fixer-band{grid-template-columns:1fr;padding:2.2rem}
@@ -642,7 +651,6 @@
     .hero p.lede{font-size:1.05rem;max-width:none}
     .hero-stats{margin-top:1.8rem}.hero-stat{padding-right:1.1rem}
     .hero-stat+.hero-stat{padding-left:1.1rem}.hero-stat .n{font-size:1.4rem}
-    .float-tag{display:none}            /* declutter the preview card */
     .hero-cta{width:100%}
     .hero-cta .btn{flex:1 1 auto;justify-content:center}
     .sec-head h2{font-size:1.7rem}
@@ -672,7 +680,8 @@
     table.users td[data-label="Change role"] .input{width:auto}
     table.users .cell-user{width:100%}
   }
-  @media(max-width:600px){#view-registerClient .back,#view-registerFixer .back,#view-post .back,#view-login .back,#view-about .back,#view-profile .back{position:static}#view-registerClient .flow-card,#view-registerFixer .flow-card,#view-post .flow-card,#view-login .flow-card,#view-profile .flow-card{margin-top:1.5rem}#view-about .page-body{margin-top:1.5rem}}
+  /* The old 600px block here only undid the absolute back button and padded around
+     it; with the button in the flow at every width there is nothing left to undo. */
   @media(max-width:480px){.cats{grid-template-columns:1fr}.flow-card{padding:1.5rem}.plabel{display:none}}
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
@@ -876,6 +885,12 @@
         number; 700 carries the same emphasis without going blocky. */
   html[data-lang="ka"] h1,html[data-lang="ka"] h2,html[data-lang="ka"] h3{font-weight:700}
   html[data-lang="ka"] .hero-stat .n{font-weight:700}
+  /* The labels are long enough to push the third stat onto its own row at 1440,
+     which then carries a divider it should not have at the start of a line.
+     Tightening the label keeps all three on one row, as in English. */
+  html[data-lang="ka"] .hero-stat{padding-right:1.35rem}
+  html[data-lang="ka"] .hero-stat+.hero-stat{padding-left:1.35rem}
+  html[data-lang="ka"] .hero-stat .l{font-size:.72rem;letter-spacing:0}
 
   /* 4. Size. Georgian sits optically smaller than Latin at an equal font-size,
         so body copy comes up slightly while headings come down — the long strings
