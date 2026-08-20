@@ -4,8 +4,29 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Digit — Behind every glitch, there's someone who can fix it</title>
-<link rel="icon" type="image/png" href="/logo.png?v=2">
-<link rel="apple-touch-icon" href="/logo.png?v=2">
+<!-- Language gate. Runs before anything paints, so a returning Georgian visitor
+     never sees the English markup this file ships with. i18n.js translates the DOM
+     after parsing, which is ~100ms after first paint — long enough to read as a
+     flicker. Rather than delay everyone, only a non-English visitor holds the
+     paint, and only until the translation pass finishes (i18n.js clears the flag,
+     and the timeout below guarantees the page can never stay hidden). English is
+     the shipped markup and is untouched by any of this. -->
+<script>
+(function () {
+  var l = 'en';
+  try { l = localStorage.getItem('digit.lang') || 'en'; } catch (e) {}
+  var d = document.documentElement;
+  d.lang = l;
+  d.setAttribute('data-lang', l);
+  if (l !== 'en') {
+    d.className += ' i18n-wait';
+    setTimeout(function () { d.classList.remove('i18n-wait'); }, 900);
+  }
+})();
+</script>
+<style>html.i18n-wait body{visibility:hidden}</style>
+<link rel="icon" type="image/png" href="/logo-128.png">
+<link rel="apple-touch-icon" href="/logo-128.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Noto Sans Georgian carries the Georgian text. Bricolage, Jakarta and Space Mono
@@ -884,7 +905,7 @@
 <header class="nav">
   <div class="wrap nav-inner">
     <a class="logo" data-go="home" aria-label="Digit home">
-      <img class="mark-img" src="/logo.png?v=2" alt="" aria-hidden="true">
+      <img class="mark-img" src="/logo-128.webp" alt="" aria-hidden="true" width="128" height="121" decoding="async" fetchpriority="high">
       <span>dig<b>it</b></span>
     </a>
     <nav class="nav-links" aria-label="Primary">
@@ -1312,7 +1333,7 @@
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <a class="logo" data-go="home"><img class="mark-img" src="/logo.png?v=2" alt="" aria-hidden="true"> <span>dig<b>it</b></span></a>
+        <a class="logo" data-go="home"><img class="mark-img" src="/logo-128.webp" alt="" aria-hidden="true" width="128" height="121" decoding="async" fetchpriority="high"> <span>dig<b>it</b></span></a>
         <p>The simplest way to get a real IT problem solved by a real person.</p>
       </div>
       <div class="foot-links">

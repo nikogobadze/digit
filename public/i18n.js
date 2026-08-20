@@ -811,6 +811,7 @@ const I18N = (() => {
     document.documentElement.lang = lang;
     document.documentElement.setAttribute('data-lang', lang);
     applyTo(document.body);
+    reveal();
     syncToggle();
     // Anything already rendered with a locale-formatted date needs rebuilding.
     if (rerender && typeof window.__i18nRerender === 'function') window.__i18nRerender();
@@ -824,14 +825,21 @@ const I18N = (() => {
     });
   }
 
+  /* The inline gate in <head> hid the page for a non-English visitor so the
+     English markup never flashes. Reveal the moment the first pass is done. */
+  function reveal() { document.documentElement.classList.remove('i18n-wait'); }
+
   function init() {
-    let saved = 'en';
-    try { saved = localStorage.getItem('digit.lang') || 'en'; } catch (e) {}
+    // The gate already resolved the language before first paint; trust it and
+    // fall back to storage only if this ran without one.
+    let saved = document.documentElement.getAttribute('data-lang');
+    if (!saved) { try { saved = localStorage.getItem('digit.lang'); } catch (e) {} }
     patchLocales();
     lang = I18N_LANGS[saved] ? saved : 'en';
     document.documentElement.lang = lang;
     document.documentElement.setAttribute('data-lang', lang);
     applyTo(document.body);
+    reveal();
     syncToggle();
     observe();
     document.addEventListener('click', (e) => {
@@ -845,5 +853,8 @@ const I18N = (() => {
   return { init, setLang, t, apply: applyTo, get lang() { return lang; } };
 })();
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => I18N.init());
-else I18N.init();
+/* Runs as soon as the body exists rather than waiting for DOMContentLoaded. This
+   script sits at the end of <body>, so by the time it executes the static markup
+   is already parsed — waiting would just hold the page hidden for longer. */
+if (document.body) I18N.init();
+else document.addEventListener('DOMContentLoaded', () => I18N.init());
