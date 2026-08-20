@@ -907,12 +907,21 @@
      than English's 880 rather than being allowed to squash. */
   @media (max-width:960px){ html[data-lang="ka"] .nav-links{display:none} }
 
-  /* 8. Dashboard tabs wrap instead of scrolling. The row is overflow-x:auto with
-        scrollbar-width:none, which in English just fits — in Georgian the last tab
-        was cut off at the edge with nothing to indicate more was there. */
-  html[data-lang="ka"] .tabs{flex-wrap:wrap;overflow-x:visible;row-gap:.15rem;
-    justify-content:flex-start;gap:.9rem}
-  html[data-lang="ka"] .tabs.spread{justify-content:flex-start;gap:.6rem}
+  /* 8. Dashboard tabs. The row is overflow-x:auto with scrollbar-width:none,
+        which in English fits on one line with about 20px to spare; the longer
+        Georgian labels overran it and the last tabs were cut off with nothing to
+        say more was there. They wrap instead — and because a wrapped row makes
+        the container's single bottom border sit under only the last line, the
+        Georgian tabs are drawn as pills rather than underlines, so two lines read
+        as deliberate instead of broken. English is untouched. */
+  html[data-lang="ka"] .tabs{flex-wrap:wrap;overflow-x:visible;row-gap:.3rem;
+    justify-content:flex-start;gap:.3rem;border-bottom:0;padding-bottom:.2rem}
+  html[data-lang="ka"] .tabs.spread{justify-content:flex-start;gap:.3rem}
+  html[data-lang="ka"] .tab{border-bottom:0;margin-bottom:0;border-radius:var(--r-pill);
+    padding:.42rem .74rem;transition:background .15s,color .15s}
+  html[data-lang="ka"] .tab:hover{background:var(--bg-soft)}
+  html[data-lang="ka"] .tab.on{background:var(--ink);color:#fff}
+  html[data-lang="ka"] .tab.on .count{background:rgba(255,255,255,.22);color:#fff}
 
   /* 9. Dense data views: keep the smaller type but give the rows more height,
         so tables and charts stay scannable instead of turning into a wall. */

@@ -303,11 +303,11 @@ const I18N_KA = {
   'Fixed by': 'შეაკეთა',
 
   /* ---- task states / tabs ---- */
-  'Review queue': 'განხილვის რიგი',
+  'Review queue': 'განსახილველი',
   'Negotiating': 'მოლაპარაკება',
-  'Ready to assign': 'მინიჭებისთვის მზადაა',
-  'In progress': 'მიმდინარეობს',
-  'Awaiting confirmation': 'ელოდება დადასტურებას',
+  'Ready to assign': 'მისანიჭებელი',
+  'In progress': 'მიმდინარე',
+  'Awaiting confirmation': 'დასადასტურებელი',
   'Completed': 'დასრულებული',
   'completed': 'დასრულებული',
   'Cancelled': 'გაუქმებული',
@@ -332,6 +332,21 @@ const I18N_KA = {
   'Waiting for the manager to reply.': 'ველოდებით მენეჯერის პასუხს.',
   '— waiting for the client to reply.': '— ველოდებით კლიენტის პასუხს.',
   'Nothing waiting on a client to confirm.': 'არაფერი ელოდება კლიენტის დადასტურებას.',
+
+  /* Empty and loading states. These only render when a bucket has nothing in it,
+     which never happened on the seeded local database — every tab had tasks — so
+     they went untranslated until production, where most buckets are empty. */
+  'Nothing to review. Inbox zero! 🎉': 'განსახილველი არაფერია. სია ცარიელია! 🎉',
+  'No price negotiations in progress.': 'მიმდინარე მოლაპარაკება არ არის.',
+  'Nothing waiting to be assigned right now.': 'ამჟამად მინიჭებას არაფერი ელოდება.',
+  'No tasks in progress right now.': 'ამჟამად მიმდინარე დავალება არ არის.',
+  'No completed tasks yet.': 'დასრულებული დავალება ჯერ არ არის.',
+  'No declined or cancelled tasks.': 'უარყოფილი ან გაუქმებული დავალება არ არის.',
+  'Could not load reviews.': 'შეფასებები ვერ ჩაიტვირთა.',
+  'Could not load worker profiles.': 'სპეციალისტების პროფილები ვერ ჩაიტვირთა.',
+  'No workers have joined yet.': 'სპეციალისტები ჯერ არ შემოგვიერთდნენ.',
+  'Loading worker profiles…': 'იტვირთება სპეციალისტების პროფილები…',
+  'Loading your workers…': 'იტვირთება თქვენი სპეციალისტები…',
   'No jobs assigned to you yet. A manager will assign work that fits your skills.':
     'ჯერ არ გაქვთ მინიჭებული დავალება. მენეჯერი მოგანიჭებთ თქვენს უნარებს შესაბამის სამუშაოს.',
 
