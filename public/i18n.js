@@ -366,6 +366,20 @@ const I18N_KA = {
   'You offered': 'თქვენ შესთავაზეთ',
   'You rated': 'თქვენ შეაფასეთ',
   'Your rating:': 'თქვენი შეფასება:',
+
+  /* Labels that only render for particular data or inside a modal, so they were
+     invisible to a sweep of the default screens: a manager's note on a task, the
+     card fields in the payment dialog, and the price inputs. */
+  'Your note:': 'თქვენი შენიშვნა:',
+  'Problem': 'პრობლემა',
+  'Details': 'დეტალები',
+  'Price': 'ფასი',
+  'Price for the work (₾)': 'სამუშაოს ფასი (₾)',
+  'Your price (₾)': 'თქვენი ფასი (₾)',
+  'Card number': 'ბარათის ნომერი',
+  'Name on card': 'სახელი ბარათზე',
+  'Expiry': 'ვადა',
+  'CVC': 'CVC',
   'Client rated you': 'კლიენტმა შეგაფასათ',
   'Client countered with': 'კლიენტმა შემოგთავაზა',
   'Rating': 'შეფასება',

@@ -1027,7 +1027,7 @@ async function openSetPrice(id) {
     <h3>Set a price</h3>
     <p class="sub">Set your price for the work. The <b>${esc(task.urgency)}</b> urgency fee of <b>${money(fee)}</b> is added on top. The client can accept or negotiate.</p>
     <div class="form-error" id="rev-error"></div>
-    <label class="field"><span class="lab">Price for the work (USD)</span><input class="input" id="rev-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 50"></label>
+    <label class="field"><span class="lab">Price for the work (₾)</span><input class="input" id="rev-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 50"></label>
     <div class="offer-total" id="rev-total">Total offer: <b>${money(fee)}</b> <span>(work ${money(0)} + ${money(fee)} urgency)</span></div>
     <label class="field"><span class="lab">Note to the client <span class="opt">optional</span></span><textarea class="input" id="rev-note" placeholder="e.g. This needs a part replacement plus about 2 hours of labour."></textarea></label>
     <div class="flow-actions">
@@ -1061,7 +1061,7 @@ async function openClientCounter(id) {
     <h3>Make a counter-offer</h3>
     <p class="sub">The manager offered <b>${money(task.counter_price)}</b>. Propose a price that works for you — the manager can accept or counter back.</p>
     <div class="form-error" id="cc-error"></div>
-    <label class="field"><span class="lab">Your price (USD)</span><input class="input" id="cc-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 40"></label>
+    <label class="field"><span class="lab">Your price (₾)</span><input class="input" id="cc-price" type="number" min="0" inputmode="numeric" placeholder="e.g. 40"></label>
     <label class="field"><span class="lab">Message <span class="opt">optional</span></span><textarea class="input" id="cc-note" placeholder="e.g. That's a bit high for me — could we do ₾40?"></textarea></label>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
