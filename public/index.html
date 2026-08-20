@@ -401,9 +401,26 @@
   .dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.6rem}
   .dash-head h1{font-size:2rem}
   .dash-head p{color:var(--muted);margin-top:.3rem}
-  .tabs{display:flex;justify-content:flex-start;gap:1.6rem;border-bottom:1px solid var(--line);margin-bottom:1.6rem;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  /* One line, slid sideways when the labels do not fit — which is most widths once
+     translated. The scrollbar is hidden, so without an affordance the row simply
+     ended at the edge with no sign more existed; .can-left/.can-right are set by
+     app.js and fade whichever side still has tabs behind it. justify-content is
+     flex-start while scrollable: space-between would spread the tabs to the ends
+     and there would be nothing to scroll to. */
+  .tabs{display:flex;justify-content:flex-start;gap:1.6rem;border-bottom:1px solid var(--line);
+    margin-bottom:1.6rem;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+    scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
   .tabs.spread{justify-content:space-between;gap:.15rem}
+  .tabs.can-left,.tabs.can-right{justify-content:flex-start}
   .tabs::-webkit-scrollbar{display:none}
+  .tabs.can-right{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent);
+    mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent)}
+  .tabs.can-left{-webkit-mask-image:linear-gradient(90deg,transparent,#000 46px);
+    mask-image:linear-gradient(90deg,transparent,#000 46px)}
+  .tabs.can-left.can-right{
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 46px,#000 calc(100% - 46px),transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 46px,#000 calc(100% - 46px),transparent)}
+  @media (prefers-reduced-motion:reduce){ .tabs{scroll-behavior:auto} }
   .tab{padding:.6rem .7rem;font-weight:600;font-size:.88rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;display:flex;align-items:center;gap:.35rem;white-space:nowrap;flex-shrink:0}
   .tab:hover{color:var(--ink)}
   .tab.on{color:var(--violet-deep);border-bottom-color:var(--violet)}
@@ -907,21 +924,10 @@
      than English's 880 rather than being allowed to squash. */
   @media (max-width:960px){ html[data-lang="ka"] .nav-links{display:none} }
 
-  /* 8. Dashboard tabs. The row is overflow-x:auto with scrollbar-width:none,
-        which in English fits on one line with about 20px to spare; the longer
-        Georgian labels overran it and the last tabs were cut off with nothing to
-        say more was there. They wrap instead — and because a wrapped row makes
-        the container's single bottom border sit under only the last line, the
-        Georgian tabs are drawn as pills rather than underlines, so two lines read
-        as deliberate instead of broken. English is untouched. */
-  html[data-lang="ka"] .tabs{flex-wrap:wrap;overflow-x:visible;row-gap:.3rem;
-    justify-content:flex-start;gap:.3rem;border-bottom:0;padding-bottom:.2rem}
-  html[data-lang="ka"] .tabs.spread{justify-content:flex-start;gap:.3rem}
-  html[data-lang="ka"] .tab{border-bottom:0;margin-bottom:0;border-radius:var(--r-pill);
-    padding:.42rem .74rem;transition:background .15s,color .15s}
-  html[data-lang="ka"] .tab:hover{background:var(--bg-soft)}
-  html[data-lang="ka"] .tab.on{background:var(--ink);color:#fff}
-  html[data-lang="ka"] .tab.on .count{background:rgba(255,255,255,.22);color:#fff}
+  /* 8. Dashboard tabs stay on one line in Georgian too — see the slideable tab
+        row above, which both languages share. Only the spacing is tightened here,
+        since the labels are wider. */
+  html[data-lang="ka"] .tabs.spread{gap:.35rem}
 
   /* 9. Dense data views: keep the smaller type but give the rows more height,
         so tables and charts stay scannable instead of turning into a wall. */

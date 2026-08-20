@@ -1178,6 +1178,51 @@ function confirmRole(id, name, newRole) {
 /* ---------- shared ---------- */
 function wireTabs(root) {
   $$('.tab', root).forEach(t => t.onclick = () => { state.dashTab = t.getAttribute('data-tab'); renderDashboard(); });
+  wireTabScroll(root);
+}
+
+/* The tab row is one line that slides sideways. Three things make that usable:
+   a fade on whichever side still has tabs behind it (the scrollbar is hidden, so
+   otherwise the row just ends and nothing says there is more), the selected tab
+   scrolled into view after a re-render, and the wheel translated to horizontal
+   for anyone on a mouse — a trackpad or a touchscreen can already swipe it. */
+let tabRow = null;
+
+function updateTabFade() {
+  const row = tabRow;
+  if (!row || !row.isConnected) return;
+  const max = row.scrollWidth - row.clientWidth;
+  row.classList.toggle('can-left', max > 1 && row.scrollLeft > 1);
+  row.classList.toggle('can-right', max > 1 && row.scrollLeft < max - 1);
+}
+/* One listener for the lifetime of the page, not one per render — the row is
+   rebuilt on every dashboard render and per-render listeners would pile up. */
+window.addEventListener('resize', updateTabFade);
+
+function wireTabScroll(root) {
+  const row = $('.tabs', root);
+  tabRow = row;
+  if (!row) return;
+  row.addEventListener('scroll', updateTabFade, { passive: true });
+  row.addEventListener('wheel', (e) => {
+    const max = row.scrollWidth - row.clientWidth;
+    if (max <= 1) return;                                   // nothing to slide
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // already a sideways gesture
+    const atStart = row.scrollLeft <= 0, atEnd = row.scrollLeft >= max;
+    // Hand the gesture back to the page at either end instead of trapping it.
+    if ((e.deltaY < 0 && atStart) || (e.deltaY > 0 && atEnd)) return;
+    e.preventDefault();
+    row.scrollLeft = Math.max(0, Math.min(max, row.scrollLeft + e.deltaY));
+  }, { passive: false });
+
+  // Bring the selected tab into view; on first paint do it without animating.
+  const on = $('.tab.on', row);
+  if (on) {
+    const target = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
+    const max = row.scrollWidth - row.clientWidth;
+    row.scrollLeft = Math.max(0, Math.min(max, target));
+  }
+  updateTabFade();
 }
 function labelOf(key) { return (state.cats.find(c => c.key === key) || {}).label || key; }
 
