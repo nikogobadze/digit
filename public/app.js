@@ -84,8 +84,37 @@ async function api(path, { method, body, form } = {}) {
   // dismissed/resigned) — sign out cleanly instead of leaving a stuck screen.
   if (res.status === 401 && state.user) { setAuth(null); toast('Your session ended. Please log in again.', true); go('login'); }
   if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+  // Anything that writes makes every cached read suspect. Doing it here rather
+  // than at each call site means a new action cannot forget to invalidate.
+  if (method !== 'GET') clearApiCache();
   return data;
 }
+
+/* ---------- short-lived cache for read-only payloads ----------
+   The dashboard tabs are client-side filters over one task list, so re-fetching
+   that list on every tab click spent a whole round trip to the function's region
+   on data already in memory — the single biggest source of the delay between
+   clicking a tab and seeing it. Reads are cached briefly, every write clears the
+   cache, and the background poll passes fresh=true so the screen still updates
+   on its own. Concurrent callers share one in-flight request instead of racing. */
+const API_TTL = 20000;
+const apiCache = new Map();      // path -> { at, data }
+const apiInflight = new Map();   // path -> Promise
+
+async function apiCached(path, fresh = false) {
+  if (!fresh) {
+    const hit = apiCache.get(path);
+    if (hit && Date.now() - hit.at < API_TTL) return hit.data;
+    const flying = apiInflight.get(path);
+    if (flying) return flying;
+  }
+  const p = api(path)
+    .then(d => { apiCache.set(path, { at: Date.now(), data: d }); apiInflight.delete(path); return d; })
+    .catch(e => { apiInflight.delete(path); throw e; });
+  apiInflight.set(path, p);
+  return p;
+}
+function clearApiCache() { apiCache.clear(); apiInflight.clear(); }
 
 let toastTimer;
 function toast(msg, bad = false) {
@@ -507,14 +536,19 @@ document.addEventListener('click', async e => {
   } catch (err) { toast(err.message, true); renderDashboard(); }
 });
 
-async function renderDashboard(silent = false) {
+/* fresh=true bypasses the read cache — used by the background poll, which exists
+   precisely to notice other people's changes. A tab click leaves it false, so
+   switching tabs re-renders from memory and feels immediate. */
+async function renderDashboard(silent = false, fresh = false) {
   const u = state.user; if (!u) return go('login');
   const root = $('#dash-root');
-  if (!silent) root.innerHTML = loadingBox();
-  if (u.role === 'client') return renderClient(root);
-  if (u.role === 'fixer') return renderFixer(root);
-  if (u.role === 'manager') return renderManager(root);
-  if (u.role === 'admin') return renderAdmin(root);
+  // Only show the spinner when there is nothing to show yet; with a warm cache
+  // the re-render is instant and a flash of "Loading…" reads as slower, not faster.
+  if (!silent && !root.firstElementChild) root.innerHTML = loadingBox();
+  if (u.role === 'client') return renderClient(root, fresh);
+  if (u.role === 'fixer') return renderFixer(root, fresh);
+  if (u.role === 'manager') return renderManager(root, fresh);
+  if (u.role === 'admin') return renderAdmin(root, fresh);
 }
 
 /* Auto-refresh: keeps each dashboard live so a manager's approval reaches
@@ -530,7 +564,7 @@ setInterval(() => {
   if (a && $('#dash-root').contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)) return;
   if ($('#dash-root').querySelector('.events.show')) return; // don't collapse activity the user opened
   if ($('#dash-root').querySelector('.stars[data-val]:not([data-val="0"])')) return; // mid-rating
-  renderDashboard(true);
+  renderDashboard(true, true);   // fresh: this poll exists to catch other people's changes
 }, 10000);
 
 const emptyBox = (msg) => `<div class="empty">
@@ -539,9 +573,9 @@ const emptyBox = (msg) => `<div class="empty">
 const loadingBox = (msg = 'Loading…') => `<div class="loading"><span class="spin"></span>${msg}</div>`;
 
 /* ---------- CLIENT ---------- */
-async function renderClient(root) {
+async function renderClient(root, fresh = false) {
   const tab = ['ongoing', 'completed'].includes(state.dashTab) ? state.dashTab : 'ongoing';
-  const { tasks } = await api('/api/tasks/mine');
+  const { tasks } = await apiCached('/api/tasks/mine', fresh);
   const done = ['completed', 'declined', 'cancelled'];
   const ongoing   = tasks.filter(t => !done.includes(t.status));
   const completed = tasks.filter(t => done.includes(t.status));
@@ -607,9 +641,9 @@ function clientCard(t) {
 /* ---------- FIXER ----------
    Fixers no longer browse a pool. A manager assigns each job to a specific
    fixer, so the dashboard only shows jobs assigned to this fixer. */
-async function renderFixer(root) {
+async function renderFixer(root, fresh = false) {
   const tab = ['ongoing', 'unconfirmed', 'finished'].includes(state.dashTab) ? state.dashTab : 'ongoing';
-  const [mine, me] = await Promise.all([api('/api/fixer/mine'), api('/api/me')]);
+  const [mine, me] = await Promise.all([apiCached('/api/fixer/mine', fresh), apiCached('/api/me', fresh)]);
   // keep availability (e.g. auto-Busy on assignment) in sync without resetting the tab
   if (me && me.user) { state.user = me.user; try { localStorage.setItem('digit_user', JSON.stringify(me.user)); } catch {} }
   const ongoing     = mine.tasks.filter(t => t.status === 'assigned');
@@ -703,8 +737,8 @@ function groupCards(groups, active) {
   return list.map(render).join('');
 }
 
-async function renderManager(root) {
-  const { tasks } = await api('/api/manager/all');
+async function renderManager(root, fresh = false) {
+  const { tasks } = await apiCached('/api/manager/all', fresh);
   const groups = bucketize(tasks);
   const keys = TASK_GROUPS.map(g => g.key);
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'queue';
@@ -957,7 +991,7 @@ async function openSetPrice(id) {
 async function openClientCounter(id) {
   modal(`<h3>Make a counter-offer</h3><p class="sub">${loadingBox('Loading…')}</p>`);
   let task = null;
-  try { const { tasks } = await api('/api/tasks/mine'); task = tasks.find(t => String(t.id) === String(id)); }
+  try { const { tasks } = await apiCached('/api/tasks/mine'); task = tasks.find(t => String(t.id) === String(id)); }
   catch (err) { closeModal(); toast(err.message, true); return; }
   if (!task || task.status !== 'price_countered') { closeModal(); toast("There's no offer to respond to right now.", true); renderDashboard(); return; }
   modal(`
@@ -1014,16 +1048,23 @@ async function openCounterReply(id) {
 }
 
 /* ---------- ADMIN ---------- */
-async function renderAdmin(root) {
+async function renderAdmin(root, fresh = false) {
   const keys = ['people', ...TASK_GROUPS.map(g => g.key)];
   const tab = keys.includes(state.dashTab) ? state.dashTab : 'people';
-  const { tasks } = await api('/api/manager/all');
+  /* People is the default tab and needs both payloads, so they go out together.
+     Awaiting them one after the other cost two full round trips to the function's
+     region before an admin saw anything. */
+  const needUsers = tab === 'people';
+  const [taskRes, userRes] = await Promise.all([
+    apiCached('/api/manager/all', fresh),
+    needUsers ? apiCached('/api/admin/users', fresh) : null,
+  ]);
+  const { tasks } = taskRes;
   const groups = bucketize(tasks);
   const tabsHtml = `<div class="tab ${tab==='people'?'on':''}" data-tab="people">People</div>${groupTabsHtml(groups, tab)}`;
   let body;
   if (tab === 'people') {
-    const { users } = await api('/api/admin/users');
-    body = adminPeople(users);
+    body = adminPeople(userRes.users);
   } else {
     body = `<div class="grid">${groupCards(groups, tab)}</div>`;
   }
@@ -1200,7 +1241,7 @@ async function renderFixers() {
   const root = $('#fixers-root');
   root.innerHTML = loadingBox('Loading worker profiles…');
   let data;
-  try { data = await api('/api/staff/fixers'); } catch { root.innerHTML = emptyBox('Could not load worker profiles.'); return; }
+  try { data = await apiCached('/api/staff/fixers'); } catch { root.innerHTML = emptyBox('Could not load worker profiles.'); return; }
   const fixers = data.fixers;
   const head = `<div class="dash-head fixers-head"><div>
     <h1>Worker profiles</h1>

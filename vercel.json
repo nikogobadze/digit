@@ -1,14 +1,41 @@
 {
   "version": 2,
-  "regions": ["hnd1"],
+  "regions": [
+    "hnd1"
+  ],
   "builds": [
-    { "src": "server.js", "use": "@vercel/node", "config": { "includeFiles": ["public/**"] } },
-    { "src": "public/**", "use": "@vercel/static" }
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "public/**"
+        ]
+      }
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/server.js" },
-    { "src": "/((?!api/).+\\.(js|css|png|jpe?g|svg|ico|webp|gif|woff2?|map|txt))", "dest": "/public/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/public/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/((?!api/).+\\.(js|css|png|jpe?g|svg|ico|webp|gif|woff2?|map|txt))",
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=604800"
+      }
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/index.html"
+    }
   ]
 }

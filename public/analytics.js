@@ -76,7 +76,7 @@ function anSetPreset(key) {
 /* ==================================================================
    Mount
 ================================================================== */
-async function mountAnalytics() {
+async function mountAnalytics(fresh = false) {
   const host = document.getElementById('analytics-root');
   if (!host) return;
   const r = anRange();
@@ -84,7 +84,9 @@ async function mountAnalytics() {
   // re-enter here too, and blanking the page each time would flash.
   if (!host.firstElementChild) host.innerHTML = loadingBox('Crunching the numbers…');
   try {
-    const data = await api(`/api/analytics?from=${r.from}&to=${r.to}`);
+    // Cached per range, so stepping between presets and coming back to the page
+    // is instant. Refresh and the 10-minute timer pass fresh=true.
+    const data = await apiCached(`/api/analytics?from=${r.from}&to=${r.to}`, fresh);
     host.innerHTML = analyticsHTML(data);
     anWire(host);
   } catch (err) {
@@ -99,7 +101,7 @@ async function mountAnalytics() {
     if (!document.getElementById('analytics-root')) return clearInterval(anTimer);
     if (document.visibilityState !== 'visible') return;
     if (document.getElementById('modal-bg').classList.contains('show')) return;
-    mountAnalytics();
+    mountAnalytics(true);
   }, 600000);
 }
 
@@ -118,7 +120,7 @@ function anWire(host) {
   if (to) to.onchange = custom;
 
   const refresh = host.querySelector('#an-refresh');
-  if (refresh) refresh.onclick = () => { refresh.classList.add('spinning'); mountAnalytics(); };
+  if (refresh) refresh.onclick = () => { refresh.classList.add('spinning'); mountAnalytics(true); };
   const print = host.querySelector('#an-print');
   if (print) print.onclick = () => window.print();
 
