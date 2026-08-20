@@ -146,8 +146,22 @@
   .hero-cta{display:flex;gap:.9rem;flex-wrap:wrap}
   .hero .btn-primary{background:#fff;color:#0B0B45;box-shadow:0 12px 30px rgba(0,0,0,.35)}
   .hero .btn-primary:hover{background:#EDEDFF;box-shadow:0 16px 40px rgba(0,0,0,.45)}
-  .hero .btn-ghost{background:rgba(255,255,255,.07);color:#fff;border-color:rgba(255,255,255,.22);box-shadow:none}
-  .hero .btn-ghost:hover{background:rgba(255,255,255,.15)}
+  /* Its own surface, not a 7% tint. At that opacity the hero's second background
+     layer — a radial centred at -6% 108% that fades out at 46% — passed its falloff
+     edge straight through the button, and the interior read 29 luminance on the
+     left against 45 across the rest: the uneven left side. The blur flattens
+     whatever sits behind it, and the heavier fill stops the backdrop carrying.
+     Brighter border, inset top highlight and a real shadow lift it off the hero,
+     while the white primary next to it keeps the hierarchy. */
+  .hero .btn-ghost{
+    background:linear-gradient(180deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.12) 100%);
+    color:#fff;border-color:rgba(255,255,255,.46);
+    box-shadow:0 8px 22px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.28);
+    -webkit-backdrop-filter:blur(12px) saturate(1.15);backdrop-filter:blur(12px) saturate(1.15)}
+  .hero .btn-ghost:hover{
+    background:linear-gradient(180deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.20) 100%);
+    border-color:rgba(255,255,255,.68);
+    box-shadow:0 14px 32px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.36)}
   .hero-stats{display:flex;gap:0;margin-top:1.7rem;flex-wrap:wrap}
   .hero-stat{padding-right:1.9rem}
   .hero-stat+.hero-stat{padding-left:1.9rem;border-left:1px solid rgba(255,255,255,.14)}
