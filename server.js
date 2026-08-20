@@ -300,6 +300,9 @@ app.post('/api/profile', auth, ah(async (req, res) => {
   if (b.email) {
     const e = b.email.toLowerCase().trim();
     if (e && e !== u.email) {
+      // Same check registration does. Without it you could change your address to
+      // something unreachable and lock yourself out of your own account.
+      const ee = emailError(e); if (ee) return res.status(400).json({ error: ee });
       const ex = await userByEmail(e);
       if (ex && ex.id !== u.id) return res.status(409).json({ error: 'That email is already in use.' });
       email = e;
