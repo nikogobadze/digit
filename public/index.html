@@ -566,6 +566,52 @@
   .modal-bg{position:fixed;inset:0;background:rgba(27,21,37,.5);backdrop-filter:blur(3px);display:none;place-items:center;z-index:100;padding:1rem}
   .modal-bg.show{display:grid}
   .modal{background:#fff;border-radius:var(--r);box-shadow:var(--shadow-lg);width:min(480px,94vw);padding:1.8rem;animation:pop .25s ease}
+
+  /* ---------- photo lightbox ----------
+     Task photos are shown as 110px object-fit:cover thumbnails, so they are
+     cropped and small — a client could not check what they uploaded and a worker
+     could not see what was actually wrong. Tapping one opens it here at full size. */
+  .lb{position:fixed;inset:0;z-index:200;background:rgba(9,9,24,.92);
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;
+    padding:clamp(.75rem,3vw,2rem);animation:lbin .18s ease}
+  .lb[hidden]{display:none}
+  @keyframes lbin{from{opacity:0}to{opacity:1}}
+  .lb-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:.75rem;min-width:0;min-height:0}
+  /* flex:0 0 auto is load-bearing. As a flex item in a column the image was being
+     shrunk to fit the stage's height and came out 25px tall — object-fit:contain
+     then letterboxed the photo inside that sliver. It must size from its own
+     dimensions and be capped by max-*, never distributed by the flex algorithm. */
+  .lb-stage img{flex:0 0 auto;width:auto;height:auto;
+    max-width:100%;max-height:calc(100vh - 8rem);object-fit:contain;
+    border-radius:var(--r-sm);box-shadow:0 30px 80px rgba(0,0,0,.6);background:#111;
+    animation:lbpop .2s ease}
+  @keyframes lbpop{from{transform:scale(.97);opacity:0}to{transform:scale(1);opacity:1}}
+  .lb-count{color:rgba(255,255,255,.72);font-size:.85rem;font-weight:600;letter-spacing:.01em}
+  .lb-close{position:absolute;top:clamp(.6rem,2vw,1.1rem);right:clamp(.6rem,2vw,1.1rem);
+    width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;font-size:1.1rem;
+    background:rgba(255,255,255,.14);color:#fff;transition:background .15s}
+  .lb-close:hover{background:rgba(255,255,255,.26)}
+  .lb-nav{width:48px;height:48px;border-radius:50%;border:0;cursor:pointer;flex-shrink:0;
+    font-size:1.9rem;line-height:1;background:rgba(255,255,255,.14);color:#fff;
+    display:grid;place-items:center;transition:background .15s,opacity .15s}
+  .lb-nav:hover{background:rgba(255,255,255,.26)}
+  .lb-nav[disabled]{opacity:0;pointer-events:none}
+  .lb-close:focus-visible,.lb-nav:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  /* A single photo needs no arrows, and on a phone they would crowd the image. */
+  .lb.solo .lb-nav{display:none}
+  @media(max-width:600px){
+    .lb{grid-template-columns:1fr}
+    .lb-nav{position:absolute;bottom:1rem;z-index:1}
+    .lb-prev{left:1rem} .lb-next{right:1rem}
+    .lb-stage img{max-height:calc(100vh - 9rem)}
+  }
+
+  /* The thumbnail is now a control, so it should look like one. */
+  .tcard .tphoto{cursor:zoom-in;transition:transform .16s ease,box-shadow .16s ease}
+  .tcard .tphoto:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(11,11,69,.18)}
+  .tcard .tphoto:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
   .modal h3{font-size:1.3rem;margin-bottom:.4rem}
   .modal p.sub{color:var(--muted);font-size:.92rem;margin-bottom:1.2rem}
   .modal .flow-actions{flex-wrap:wrap;gap:.6rem;margin-top:1.3rem}
@@ -1411,6 +1457,18 @@
 
 <!-- modal + toast -->
 <div class="modal-bg" id="modal-bg"><div class="modal" id="modal"></div></div>
+
+<!-- Photo viewer. Separate from #modal: that one is a white card sized for forms,
+     this needs to be full-bleed and dark so the photo is the only thing you see. -->
+<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo" hidden>
+  <button class="lb-close" id="lb-close" aria-label="Close photo">&#10005;</button>
+  <button class="lb-nav lb-prev" id="lb-prev" aria-label="Previous photo">&#8249;</button>
+  <figure class="lb-stage">
+    <img id="lb-img" alt="">
+    <figcaption class="lb-count" id="lb-count"></figcaption>
+  </figure>
+  <button class="lb-nav lb-next" id="lb-next" aria-label="Next photo">&#8250;</button>
+</div>
 <div id="toast"></div>
 
 <!-- charts.js and analytics.js declare functions only; app.js calls into them -->

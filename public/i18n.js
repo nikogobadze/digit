@@ -371,6 +371,13 @@ const I18N_KA = {
      invisible to a sweep of the default screens: a manager's note on a task, the
      card fields in the payment dialog, and the price inputs. */
   'Your note:': 'თქვენი შენიშვნა:',
+
+  /* Photo viewer */
+  'Close photo': 'ფოტოს დახურვა',
+  'Previous photo': 'წინა ფოტო',
+  'Next photo': 'შემდეგი ფოტო',
+  'Tap to enlarge': 'დააჭირეთ გასადიდებლად',
+  'Photo': 'ფოტო',
   'Problem': 'პრობლემა',
   'Details': 'დეტალები',
   'Price': 'ფასი',

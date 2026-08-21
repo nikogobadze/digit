@@ -555,7 +555,7 @@ function cardShell(t, inner) {
     <div class="top">${badge(t.status)}</div>
     <h3>${esc(t.title)}</h3>
     <p class="desc">${esc(t.description)}</p>
-    ${(t.photos && t.photos.length) ? `<div class="tphotos">${t.photos.map(p => `<img class="tphoto" src="${p}" alt="problem photo">`).join('')}</div>` : ''}
+    ${(t.photos && t.photos.length) ? `<div class="tphotos">${t.photos.map((p, i) => `<img class="tphoto" src="${p}" alt="Problem photo ${i + 1}" role="button" tabindex="0" data-photo="${i}" title="Tap to enlarge">`).join('')}</div>` : ''}
     ${inner || ''}
     ${eventsHtml(t)}
   </div>`;
@@ -1538,3 +1538,88 @@ async function saveProfile(e) {
   go(initialView, initialHash, false);
   await me;   // let a stale session settle before anything else runs
 })();
+
+/* ==================================================================
+   PHOTO LIGHTBOX
+   Task photos render as small cropped thumbnails, which is fine for a card but
+   useless for the two people who need to look properly: the client checking what
+   they uploaded, and the worker checking what is actually broken. Any thumbnail
+   on any dashboard opens here — cardShell is shared by every role, so wiring it
+   once covers client, worker, manager and admin.
+================================================================== */
+const LB = {
+  el: null, img: null, count: null, prev: null, next: null,
+  urls: [], i: 0, lastFocus: null,
+};
+
+function lbInit() {
+  LB.el = document.getElementById('lightbox');
+  if (!LB.el) return;
+  LB.img = document.getElementById('lb-img');
+  LB.count = document.getElementById('lb-count');
+  LB.prev = document.getElementById('lb-prev');
+  LB.next = document.getElementById('lb-next');
+  document.getElementById('lb-close').onclick = lbClose;
+  LB.prev.onclick = (e) => { e.stopPropagation(); lbGo(LB.i - 1); };
+  LB.next.onclick = (e) => { e.stopPropagation(); lbGo(LB.i + 1); };
+  /* Click anywhere to dismiss, except on the photo itself or a control. */
+  LB.el.addEventListener('click', (e) => {
+    if (e.target === LB.img) return;
+    if (e.target.closest('button')) return;
+    lbClose();
+  });
+}
+
+function lbOpen(urls, index) {
+  if (!LB.el || !urls.length) return;
+  LB.urls = urls;
+  LB.lastFocus = document.activeElement;
+  LB.el.classList.toggle('solo', urls.length < 2);
+  LB.el.hidden = false;
+  document.body.style.overflow = 'hidden';   // don't scroll the page behind it
+  lbGo(index);
+  document.getElementById('lb-close').focus();
+}
+
+function lbGo(i) {
+  if (!LB.urls.length) return;
+  LB.i = Math.max(0, Math.min(LB.urls.length - 1, i));
+  LB.img.src = LB.urls[LB.i];
+  LB.img.alt = `Problem photo ${LB.i + 1} of ${LB.urls.length}`;
+  LB.count.textContent = LB.urls.length > 1 ? `${LB.i + 1} / ${LB.urls.length}` : '';
+  LB.prev.disabled = LB.i === 0;
+  LB.next.disabled = LB.i === LB.urls.length - 1;
+}
+
+function lbClose() {
+  if (!LB.el || LB.el.hidden) return;
+  LB.el.hidden = true;
+  LB.img.removeAttribute('src');            // stop a large image decoding in the background
+  document.body.style.overflow = '';
+  if (LB.lastFocus && LB.lastFocus.isConnected) LB.lastFocus.focus();
+}
+
+/* Delegated, because cards are re-rendered constantly by the dashboard poll —
+   per-thumbnail handlers would be lost on every refresh. */
+document.addEventListener('click', (e) => {
+  const th = e.target.closest && e.target.closest('.tphoto');
+  if (!th) return;
+  const wrap = th.closest('.tphotos');
+  if (!wrap) return;
+  const urls = [...wrap.querySelectorAll('.tphoto')].map(x => x.getAttribute('src'));
+  lbOpen(urls, +th.getAttribute('data-photo') || 0);
+});
+// Enter/Space on a focused thumbnail, since they are role=button.
+document.addEventListener('keydown', (e) => {
+  const th = e.target.closest && e.target.closest('.tphoto');
+  if (th && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); th.click(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (!LB.el || LB.el.hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); lbClose(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); lbGo(LB.i - 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); lbGo(LB.i + 1); }
+});
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lbInit);
+else lbInit();
