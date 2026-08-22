@@ -32,6 +32,53 @@ function readAuthCache() {
   try { return JSON.parse(localStorage.getItem('digit_user') || 'null'); } catch { return null; }
 }
 
+/* Reveal-on-scroll for the landing artwork.
+
+   Deliberately a throttled scroll sweep rather than an IntersectionObserver. An
+   observer only fires when the intersection ratio CHANGES, so jumping clean over
+   an element — an anchor link, a restored scroll position, find-in-page — can
+   produce no callback at all, and those cards then sat at opacity 0 for good.
+   A sweep asks the only question that matters (is it at or above the fold yet)
+   and cannot miss. It unhooks itself once everything is revealed, so the cost is
+   a handful of rects for the length of one scroll down the page. */
+let revealHooked = false;
+let revealQueued = false;
+
+function revealSweep() {
+  const left = $$('#view-home .hiw-step:not(.in), #view-home .cat:not(.in)');
+  if (!left.length) {
+    window.removeEventListener('scroll', onRevealScroll);
+    window.removeEventListener('resize', onRevealScroll);
+    revealHooked = false;
+    return;
+  }
+  const fold = window.innerHeight * 0.92;
+  for (const el of left) {
+    if (el.getBoundingClientRect().top < fold) el.classList.add('in');
+  }
+}
+
+function onRevealScroll() {
+  if (revealQueued) return;
+  revealQueued = true;
+  requestAnimationFrame(() => { revealQueued = false; revealSweep(); });
+}
+
+function armReveal() {
+  const targets = $$('#view-home .hiw-step, #view-home .cat');
+  if (!targets.length) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    targets.forEach(el => el.classList.add('in'));
+    return;
+  }
+  if (!revealHooked) {
+    window.addEventListener('scroll', onRevealScroll, { passive: true });
+    window.addEventListener('resize', onRevealScroll);
+    revealHooked = true;
+  }
+  revealSweep();
+}
+
 /* ---------- tiny helpers ---------- */
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -228,6 +275,7 @@ function go(view, hash, push = true) {
   if (view === 'reviews') renderReviews();
   if (view === 'fixers') renderFixers();
   if (view === 'analytics') mountAnalytics();
+  if (view === 'home') armReveal();
   const url = (PATHS[view] || '/') + (hash ? '#' + hash : '');
   if (push) history.pushState({ view, hash: hash || null }, '', url);
   else history.replaceState({ view, hash: hash || null }, '', url);
@@ -283,11 +331,16 @@ function renderNav() {
 async function loadCategories() {
   state.cats = await api('/api/categories');
   // home category cards (decorative discovery — they just open the post form)
-  $('#home-cats').innerHTML = state.cats.map(c =>
-    `<button class="cat" data-cat="${c.key}" data-pick><span class="cico">${c.emoji}</span>${esc(c.label)}</button>`).join('');
+  /* Prefer the drawn icon; fall back to the server's emoji for any category that
+     has no art yet, so adding one server-side never renders a blank tile. */
+  $('#home-cats').innerHTML = state.cats.map(c => {
+    const art = (typeof catIcon === 'function' && catIcon(c.key)) || esc(c.emoji || '');
+    return `<button class="cat" data-cat="${c.key}" data-pick><span class="cico">${art}</span>${esc(c.label)}</button>`;
+  }).join('');
   // fixer skill chips (multi select) — fixers still register what they can do
   $('#skill-chips').innerHTML = state.cats.filter(c => c.key !== 'other').map(c =>
     `<span class="chip" data-skill="${c.key}">${c.emoji} ${esc(c.label)}</span>`).join('');
+  armReveal();
 }
 
 /* home "Common Problems" card → open the post form (problems no longer have a category) */

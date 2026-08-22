@@ -226,7 +226,10 @@
   .cats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
   .cat{display:flex;align-items:center;gap:.8rem;background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:1rem 1.1rem;font-weight:600;font-size:.97rem;transition:all .18s;text-align:left;cursor:pointer}
   .cat:hover{border-color:var(--violet);background:var(--violet-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
-  .cat .cico{width:38px;height:38px;border-radius:10px;background:var(--sheen);display:grid;place-items:center;color:var(--violet-deep);flex-shrink:0;font-size:1.1rem}
+  .cat .cico{width:46px;height:46px;border-radius:13px;background:var(--sheen);display:grid;place-items:center;
+    color:var(--violet-deep);flex-shrink:0;font-size:1.1rem;transition:transform .22s ease}
+  .cat .cat-svg{width:30px;height:30px;display:block}
+  .cat:hover .cico{transform:scale(1.09) rotate(-3deg)}
   .home-other{max-width:640px;margin:1.8rem auto 0;text-align:center}
   .home-other-lab{display:block;font-weight:600;color:var(--muted);font-size:.92rem;margin-bottom:.7rem}
   .home-other-row{display:flex;gap:.6rem}
@@ -937,6 +940,44 @@
     .sc-a,.sc-b,.sc-chip1,.sc-chip2,.sc-flow{animation:none}
   }
 
+  /* ---------- depth + motion on the landing ----------
+     Feedback asked for more illustration, more animation and some sense of depth.
+     The depth is done with layered shadows and a slight 3D tilt rather than real
+     perspective, so it costs nothing and degrades to flat art if transforms are
+     unsupported. Everything here stops under prefers-reduced-motion. */
+
+  /* Hero scene: sit the pieces on separate planes so it reads as depth. */
+  .hero-art .scene{perspective:900px}
+  .sc-card{transform-style:preserve-3d}
+  .sc-a{transform-origin:60% 60%}
+  .sc-b{transform-origin:40% 60%}
+
+  /* The four step cards rise as they come into view. */
+  .hiw-step{opacity:0;transform:translateY(18px);
+    transition:opacity .55s cubic-bezier(.22,.8,.3,1),transform .55s cubic-bezier(.22,.8,.3,1),box-shadow .18s ease}
+  .hiw-step.in{opacity:1;transform:none}
+  .hiw-step:nth-child(2){transition-delay:.08s}
+  .hiw-step:nth-child(3){transition-delay:.16s}
+  .hiw-step:nth-child(4){transition-delay:.24s}
+  /* A gentle tilt towards the pointer, and the art lifts off the card. */
+  .hiw-step:hover .hiw-art svg{transform:translateY(-4px) scale(1.05)}
+  .hiw-art svg{transition:transform .28s cubic-bezier(.22,.8,.3,1)}
+
+  /* Category tiles arrive the same way, in a stagger across the grid. */
+  .cat{opacity:0;transform:translateY(14px);
+    transition:opacity .5s ease,transform .5s cubic-bezier(.22,.8,.3,1),border-color .15s,box-shadow .15s}
+  .cat.in{opacity:1;transform:none}
+
+  /* The cog actually turns while its card is hovered. */
+  .hiw-step:hover .hiw-art svg g[transform^="translate(60,50)"]{animation:cogSpin 3.4s linear infinite}
+  @keyframes cogSpin{to{transform:translate(60px,50px) rotate(360deg)}}
+
+  @media(prefers-reduced-motion:reduce){
+    .hiw-step,.cat{opacity:1;transform:none;transition:none}
+    .hiw-step:hover .hiw-art svg{transform:none}
+    .hiw-step:hover .hiw-art svg g[transform^="translate(60,50)"]{animation:none}
+  }
+
   /* ---------- language switch ---------- */
   /* A segmented capsule. The track is a soft inset well and the active segment a
      raised pill, so which side is live reads at a glance rather than from colour
@@ -1622,6 +1663,7 @@
 
 <!-- charts.js and analytics.js declare functions only; app.js calls into them -->
 <!-- i18n first: it installs the DOM observer before app.js renders anything. -->
+<script src="/cat-icons.js"></script>
 <script src="/i18n.js"></script>
 <script src="/charts.js"></script>
 <script src="/analytics.js"></script>
