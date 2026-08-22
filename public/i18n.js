@@ -53,6 +53,35 @@ const I18N_KA = {
 
   /* ---- landing: hero ---- */
   'IT help, made human': 'IT დახმარება ადამიანურად',
+
+  /* ---- landing rewrite: short lines that carry the whole idea ---- */
+  'Something broken?': 'რაღაც გაფუჭდა?',
+  'A real person fixes it.': 'ცოცხალი ადამიანი გაგისწორებთ.',
+  'Describe it in plain words. We do the rest.':
+    'აღწერეთ მარტივი სიტყვებით. დანარჩენს ჩვენ ვაკეთებთ.',
+  'Work with us': 'იმუშავე ჩვენთან',
+  'You describe it': 'თქვენ აღწერთ',
+  'A person handles it': 'ადამიანი აგვარებს',
+  "It's fixed": 'მოგვარდა',
+  "Four steps. That's it.": 'ოთხი ნაბიჯი. სულ ეს არის.',
+  'One sentence. Add a photo.': 'ერთი წინადადება. დაამატეთ ფოტო.',
+  'We price it': 'ვადგენთ ფასს',
+  'A manager agrees it with you.': 'მენეჯერი თქვენთან შეათანხმებს.',
+  'A pro fixes it': 'სპეციალისტი აგვარებს',
+  'Remotely or at your place.': 'დისტანციურად ან ადგილზე.',
+  "Pay only when it's done.": 'გადაიხდით მხოლოდ დასრულების შემდეგ.',
+  'What can we help with?': 'რაში დაგეხმაროთ?',
+  'Know how to fix things? Get paid for it.':
+    'იცი შეკეთება? მიიღე ანაზღაურება.',
+  'Your skills, your rate': 'შენი უნარები, შენი ტარიფი',
+  'Only relevant jobs': 'მხოლოდ შესაბამისი დავალებები',
+  'Remote or in person': 'დისტანციურად ან ადგილზე',
+  /* aria-labels on the four step illustrations — the picture carries the meaning
+     visually, so this is the only description a screen reader gets. */
+  'Describe the problem': 'აღწერეთ პრობლემა',
+  'A manager sets a fair price': 'მენეჯერი ადგენს სამართლიან ფასს',
+  'A specialist does the work': 'სპეციალისტი ასრულებს სამუშაოს',
+  'You confirm and pay': 'თქვენ ადასტურებთ და იხდით',
   "Behind every glitch, there's": 'ყოველი ხარვეზის უკან არის',
   'someone who can fix it.': 'ადამიანი, რომელიც მოაგვარებს.',
   'Digit connects everyday people with IT pros who solve real tech problems — from a blue screen to a brand-new website.':
