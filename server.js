@@ -202,20 +202,34 @@ app.get('/api/categories', (req, res) => {
 /* Everything below talks to the DB: ensure the schema/seed exist (cold start). */
 app.use('/api', ah(async (req, res, next) => { await ready(); next(); }));
 
+/* Public, identical for everyone, and now fetched by the landing page on every
+   visit as well as by the reviews page — so it is worth an edge cache and a
+   bound on the row count. The summary is computed in SQL over ALL ratings, not
+   over the returned page, so capping the rows cannot skew the average. */
+const REVIEWS_LIMIT = 200;
+
 app.get('/api/reviews', ah(async (req, res) => {
-  const rows = await all(`
-    SELECT t.rating, t.rating_comment, t.rated_at, t.category, t.custom_category,
-           f.name AS fixer, f.avatar AS fixer_avatar, c.name AS reviewer, c.avatar AS reviewer_avatar
-    FROM tasks t JOIN users f ON f.id = t.assigned_fixer_id JOIN users c ON c.id = t.client_id
-    WHERE t.rating IS NOT NULL ORDER BY t.rated_at DESC`);
+  const [rows, agg] = await Promise.all([
+    all(`
+      SELECT t.rating, t.rating_comment, t.rated_at, t.category, t.custom_category,
+             f.name AS fixer, f.avatar AS fixer_avatar, c.name AS reviewer, c.avatar AS reviewer_avatar
+      FROM tasks t JOIN users f ON f.id = t.assigned_fixer_id JOIN users c ON c.id = t.client_id
+      WHERE t.rating IS NOT NULL ORDER BY t.rated_at DESC LIMIT ?`, [REVIEWS_LIMIT]),
+    // Same joins as above on purpose: a rating whose worker or client row has
+    // gone is not listed, so it must not be counted in the summary either.
+    all(`SELECT COUNT(*) AS n, AVG(t.rating) AS avg
+         FROM tasks t JOIN users f ON f.id = t.assigned_fixer_id JOIN users c ON c.id = t.client_id
+         WHERE t.rating IS NOT NULL`),
+  ]);
   const reviews = rows.map(r => ({
     reviewer: r.reviewer, reviewerAvatar: fileUrl(r.reviewer_avatar),
     fixer: r.fixer, fixerAvatar: fileUrl(r.fixer_avatar),
     rating: r.rating, comment: r.rating_comment || null,
     categoryLabel: r.custom_category ? r.custom_category : labelFor(r.category), at: r.rated_at,
   }));
-  const count = reviews.length;
-  const avg = count ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10 : 0;
+  const count = Number(agg[0].n) || 0;
+  const avg = count ? Math.round(Number(agg[0].avg) * 10) / 10 : 0;
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
   res.json({ reviews, summary: { count, avg } });
 }));
 
