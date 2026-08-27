@@ -45,7 +45,7 @@ let revealHooked = false;
 let revealQueued = false;
 
 function revealSweep() {
-  const left = $$('#view-home .hiw-step:not(.in), #view-home .cat:not(.in)');
+  const left = $$('#view-home .fx-in:not(.in), #view-home .lp-cat:not(.in), #view-home .lp-step:not(.in)');
   if (!left.length) {
     window.removeEventListener('scroll', onRevealScroll);
     window.removeEventListener('resize', onRevealScroll);
@@ -65,7 +65,7 @@ function onRevealScroll() {
 }
 
 function armReveal() {
-  const targets = $$('#view-home .hiw-step, #view-home .cat');
+  const targets = $$('#view-home .fx-in, #view-home .lp-cat, #view-home .lp-step');
   if (!targets.length) return;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     targets.forEach(el => el.classList.add('in'));
@@ -81,10 +81,36 @@ function armReveal() {
   if (typeof window.__armFx === 'function') window.__armFx();
 }
 
+
+/* Three real reviews on the landing. Silent if there are none yet -- an empty
+   testimonial row is worse than no row, so the whole section is removed. */
+async function loadLandingReviews() {
+  const host = $('#lp-reviews');
+  if (!host) return;
+  try {
+    const { reviews } = await apiCached('/api/reviews');
+    const top = (reviews || []).filter(r => r.comment && r.rating >= 4).slice(0, 3);
+    if (!top.length) { const sec = $('#lp-reviews-sec'); if (sec) sec.remove(); return; }
+    host.innerHTML = top.map(r => `<div class="lp-review fx-in">
+      <div class="stars">${'★'.repeat(r.rating)}</div>
+      <p>${esc(r.comment)}</p>
+      <div class="who">${avatarHTML(r.reviewer, r.reviewerAvatar, 30)} <b>${esc(r.reviewer)}</b> · ${esc(r.categoryLabel || '')}</div>
+    </div>`).join('');
+    armReveal();
+  } catch { const sec = $('#lp-reviews-sec'); if (sec) sec.remove(); }
+}
+
 /* ---------- tiny helpers ---------- */
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+/* Seeded demo tasks are stored with a "[demo] " prefix — it is the only marker
+   scripts/seed-demo.js --reset has for telling generated rows from real ones, so
+   it has to stay in the database. It should never be read by a client, though,
+   so it is stripped here at render time. Stripping also lets the seeded titles
+   match their Georgian dictionary keys, which the prefix otherwise defeats. */
+const taskTitle = (s) => esc(String(s ?? '').replace(/^\[demo\]\s*/, ''));
 const money = (n) => (n || n === 0) ? `₾${n}` : '—';
 /* the internal "fixer" role is shown to users as "worker" (label only) */
 const roleLabel = (r) => r === 'fixer' ? 'worker' : r;
@@ -337,12 +363,16 @@ async function loadCategories() {
      has no art yet, so adding one server-side never renders a blank tile. */
   $('#home-cats').innerHTML = state.cats.map(c => {
     const art = (typeof catIcon === 'function' && catIcon(c.key)) || esc(c.emoji || '');
-    return `<button class="cat" data-cat="${c.key}" data-pick><span class="cico">${art}</span>${esc(c.label)}</button>`;
+    return `<button class="lp-cat fx-in" data-cat="${c.key}" data-pick>
+      <span class="ico">${art}</span>${esc(c.label)}
+      <svg class="go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>`;
   }).join('');
   // fixer skill chips (multi select) — fixers still register what they can do
   $('#skill-chips').innerHTML = state.cats.filter(c => c.key !== 'other').map(c =>
     `<span class="chip" data-skill="${c.key}">${c.emoji} ${esc(c.label)}</span>`).join('');
   armReveal();
+  loadLandingReviews();
 }
 
 /* home "Common Problems" card → open the post form (problems no longer have a category) */
@@ -575,7 +605,7 @@ async function submitTask(btn) {
 }
 function buildSummary(t) {
   $('#summary').innerHTML = `
-    <div class="row"><b>Problem</b><span>${esc(t.title)}</span></div>
+    <div class="row"><b>Problem</b><span>${taskTitle(t.title)}</span></div>
     <div class="row"><b>Details</b><span>${esc(t.description.slice(0, 90))}${t.description.length > 90 ? '…' : ''}</span></div>
     <div class="row"><b>Timing</b><span>${esc(t.urgency)}${t.urgency_fee ? ` (+${money(t.urgency_fee)})` : ' (free)'}</span></div>
     <div class="row"><b>Price</b><span>A manager will send you an offer</span></div>`;
@@ -608,7 +638,7 @@ function urgencyMeta(t) {
 function cardShell(t, inner) {
   return `<div class="tcard" data-id="${t.id}">
     <div class="top">${badge(t.status)}</div>
-    <h3>${esc(t.title)}</h3>
+    <h3>${taskTitle(t.title)}</h3>
     <p class="desc">${esc(t.description)}</p>
     ${(t.photos && t.photos.length) ? `<div class="tphotos">${t.photos.map((p, i) => `<img class="tphoto" src="${p}" alt="Problem photo ${i + 1}" role="button" tabindex="0" data-photo="${i}" title="Tap to enlarge">`).join('')}</div>` : ''}
     ${inner || ''}

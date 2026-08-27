@@ -81,10 +81,10 @@
 
   function armTilt() {
     if (!fine) return;
-    document.querySelectorAll('#view-home .hero-art, #view-home .hiw-step').forEach(el => {
+    document.querySelectorAll('#view-home .lp-art, #view-home .hero-art').forEach(el => {
       if (el.dataset.tilted) return;
       el.dataset.tilted = '1';
-      tiltable(el, el.classList.contains('hero-art') ? 7 : 5);
+      tiltable(el, 6);
     });
   }
 

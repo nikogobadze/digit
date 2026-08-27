@@ -1,0 +1,139 @@
+/* ==================================================================
+   landing.css — the profy.ge-style landing.
+
+   Direction: light and airy rather than dark. White surfaces, one warm accent
+   against the brand violet, a big friendly category grid as the centrepiece,
+   numbered steps, and real reviews. Loaded after fx.css so it wins where the
+   two disagree.
+
+   Georgian is the primary market, so every size here is chosen to hold up with
+   Georgian's longer strings and taller letterforms, not tuned for English and
+   patched for Georgian afterwards.
+================================================================== */
+
+:root{
+  --lp-ink:#14143A;
+  --lp-muted:#5F6480;
+  --lp-line:#E7E9F2;
+  --lp-soft:#F5F7FC;
+  --lp-accent:#F0913A;        /* warm counterweight to the violet */
+  --lp-accent-soft:#FFF2E3;
+  --lp-teal:#12A594;
+  --lp-teal-soft:#E4F6F3;
+}
+
+/* ---------------- hero ---------------- */
+.lp-hero{
+  position:relative;overflow:hidden;background:#fff;
+  padding:clamp(2.5rem,6vw,5rem) 0 clamp(3rem,6vw,5.5rem);
+}
+.lp-hero::before{                       /* soft light behind the art */
+  content:"";position:absolute;z-index:0;width:760px;height:760px;right:-190px;top:-320px;
+  border-radius:50%;background:radial-gradient(circle,rgba(110,110,245,.13),transparent 68%);
+}
+.lp-hero::after{
+  content:"";position:absolute;z-index:0;width:520px;height:520px;left:-200px;bottom:-280px;
+  border-radius:50%;background:radial-gradient(circle,rgba(240,145,58,.11),transparent 68%);
+}
+.lp-hero .wrap{position:relative;z-index:1}
+.lp-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(2rem,4vw,3.5rem);align-items:center}
+
+.lp-eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:700;
+  color:var(--lp-teal);background:var(--lp-teal-soft);padding:.45rem .95rem;border-radius:999px;
+  margin-bottom:1.5rem;letter-spacing:0}
+.lp-eyebrow .d{width:7px;height:7px;border-radius:50%;background:var(--lp-teal)}
+
+.lp-h1{font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.14;letter-spacing:-.02em;color:var(--lp-ink);font-weight:800}
+.lp-h1 .hl{color:var(--violet);position:relative;white-space:nowrap}
+.lp-h1 .hl::after{                      /* hand-drawn underline under the key phrase */
+  content:"";position:absolute;left:0;right:0;bottom:-.12em;height:.34em;z-index:-1;
+  background:var(--lp-accent-soft);border-radius:.2em}
+.lp-sub{color:var(--lp-muted);font-size:clamp(1rem,1.4vw,1.16rem);line-height:1.7;margin-top:1.4rem;max-width:44ch}
+.lp-cta{display:flex;gap:.85rem;flex-wrap:wrap;margin-top:2.1rem}
+
+.lp-trust{display:flex;gap:2.2rem;flex-wrap:wrap;margin-top:2.6rem;padding-top:1.7rem;border-top:1px solid var(--lp-line)}
+.lp-trust .n{display:block;font-family:'Bricolage Grotesque','Noto Sans Georgian',sans-serif;
+  font-weight:800;font-size:1.55rem;color:var(--lp-ink);line-height:1}
+.lp-trust .l{display:block;font-size:.85rem;color:var(--lp-muted);margin-top:.35rem}
+
+.lp-art{position:relative;min-width:0;perspective:1000px}
+/* --pY comes from the scroll parallax, --rx/--ry from the pointer tilt; both are
+   set by depth.js as custom properties so this one transform composes them. */
+.lp-art svg{width:100%;height:auto;display:block;filter:drop-shadow(0 24px 44px rgba(20,20,58,.14));
+  transform:translate3d(0,var(--pY,0),0) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition:transform .25s var(--fx-ease);will-change:transform}
+@media(prefers-reduced-motion:reduce){ .lp-art svg{transform:none;transition:none} }
+
+/* ---------------- section furniture ---------------- */
+.lp-sec{padding:clamp(3.2rem,6vw,5.5rem) 0;background:#fff}
+.lp-sec.soft{background:var(--lp-soft)}
+.lp-head{max-width:640px;margin:0 auto clamp(2rem,3.6vw,3rem);text-align:center}
+.lp-head h2{font-size:clamp(1.7rem,3.2vw,2.5rem);line-height:1.22;letter-spacing:-.015em;color:var(--lp-ink)}
+.lp-head p{color:var(--lp-muted);margin-top:.85rem;font-size:1.03rem;line-height:1.7}
+html[data-lang="ka"] .lp-h1{line-height:1.28;letter-spacing:0}
+html[data-lang="ka"] .lp-head h2{line-height:1.32;letter-spacing:0}
+
+/* ---------------- category grid: the centrepiece ---------------- */
+.lp-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.lp-cat{display:flex;align-items:center;gap:1rem;background:#fff;border:1px solid var(--lp-line);
+  border-radius:16px;padding:1.15rem 1.25rem;font-weight:600;font-size:1rem;color:var(--lp-ink);
+  text-align:left;cursor:pointer;width:100%;
+  transition:transform .18s var(--fx-ease),box-shadow .18s var(--fx-ease),border-color .18s var(--fx-ease)}
+.lp-cat:hover{transform:translateY(-3px);border-color:transparent;
+  box-shadow:0 14px 32px rgba(20,20,58,.10)}
+.lp-cat .ico{width:52px;height:52px;border-radius:14px;background:var(--lp-soft);
+  display:grid;place-items:center;flex-shrink:0;transition:transform .2s var(--fx-ease)}
+.lp-cat:hover .ico{transform:scale(1.07)}
+.lp-cat .ico svg{width:32px;height:32px;display:block}
+.lp-cat .go{margin-left:auto;color:var(--lp-muted);opacity:0;transform:translateX(-4px);
+  transition:opacity .18s,transform .18s;flex-shrink:0}
+.lp-cat:hover .go{opacity:1;transform:none}
+
+/* ---------------- three numbered steps ---------------- */
+.lp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem}
+.lp-step{background:#fff;border:1px solid var(--lp-line);border-radius:20px;padding:2rem 1.7rem;position:relative}
+.lp-step .num{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;
+  background:var(--violet);color:#fff;font-weight:800;font-size:1rem;margin-bottom:1.2rem}
+.lp-step .art{display:grid;place-items:center;margin-bottom:1.1rem}
+.lp-step .art svg{width:100%;max-width:190px;height:auto}
+.lp-step h3{font-size:1.16rem;color:var(--lp-ink);margin-bottom:.45rem}
+.lp-step p{color:var(--lp-muted);font-size:.96rem;line-height:1.65}
+
+/* ---------------- reviews ---------------- */
+.lp-reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem}
+.lp-review{background:#fff;border:1px solid var(--lp-line);border-radius:18px;padding:1.5rem 1.6rem;
+  display:flex;flex-direction:column;gap:.85rem}
+.lp-review .stars{color:#F5B301;font-size:.95rem;letter-spacing:.06em}
+.lp-review p{color:var(--lp-ink);line-height:1.65;font-size:.98rem;flex:1}
+.lp-review .who{display:flex;align-items:center;gap:.7rem;color:var(--lp-muted);font-size:.88rem}
+.lp-review .who b{color:var(--lp-ink);font-weight:600}
+
+/* ---------------- worker band ---------------- */
+.lp-band{background:linear-gradient(135deg,#12123F 0%,#2B2B8F 100%);color:#fff;border-radius:26px;
+  padding:clamp(2.2rem,4vw,3.4rem);display:grid;grid-template-columns:1.25fr .75fr;gap:2rem;align-items:center;
+  position:relative;overflow:hidden}
+.lp-band::before{content:"";position:absolute;width:420px;height:420px;right:-140px;top:-180px;border-radius:50%;
+  background:radial-gradient(circle,rgba(240,145,58,.28),transparent 68%)}
+.lp-band > *{position:relative;z-index:1}
+.lp-band h2{font-size:clamp(1.6rem,2.8vw,2.2rem);line-height:1.24;margin-bottom:.9rem}
+.lp-band p{color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:1.6rem;max-width:46ch}
+.lp-perks{display:flex;flex-direction:column;gap:.8rem}
+.lp-perk{display:flex;align-items:center;gap:.65rem;font-weight:500;color:rgba(255,255,255,.94)}
+.lp-perk svg{width:20px;height:20px;flex-shrink:0;color:#7FE0BC}
+
+/* ---------------- responsive ---------------- */
+@media(max-width:980px){
+  .lp-grid{grid-template-columns:1fr;gap:2.2rem}
+  .lp-art{order:-1;max-width:520px;margin:0 auto}
+  .lp-cats{grid-template-columns:repeat(2,1fr)}
+  .lp-steps{grid-template-columns:1fr;gap:1rem}
+  .lp-reviews{grid-template-columns:1fr}
+  .lp-band{grid-template-columns:1fr;gap:1.6rem}
+}
+@media(max-width:560px){
+  .lp-cats{grid-template-columns:1fr}
+  .lp-trust{gap:1.4rem}
+  .lp-cat{padding:.95rem 1rem;font-size:.95rem}
+  .lp-cat .ico{width:46px;height:46px}
+  .lp-cat .ico svg{width:28px;height:28px}
+}

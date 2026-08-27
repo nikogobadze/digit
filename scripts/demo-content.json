@@ -1,0 +1,68 @@
+{
+  "_note": "Shared demo copy. seed-demo.js writes the English into the database; tools/gen-i18n-demo.js regenerates the Georgian block in public/i18n.js from the ka fields. Georgian is the primary market, so every string here is written to read naturally in Georgian rather than as a literal translation.",
+  "tasks": [
+    {"en": "Laptop won't turn on", "ka": "ლეპტოპი არ ირთვება", "d_en": "Nothing happens when I press the power button - no lights, no sound. It was working fine yesterday.", "d_ka": "ჩართვის ღილაკზე დაჭერისას არაფერი ხდება — არც შუქი და არც ხმა. გუშინ ჯერ კიდევ მუშაობდა."},
+    {"en": "Blue screen every morning", "ka": "ყოველ დილით ლურჯი ეკრანი", "d_en": "It crashes to a blue screen almost every time I start it up, then works fine after a second restart.", "d_ka": "თითქმის ყოველ ჩართვაზე ლურჯ ეკრანზე ვარდება, მეორედ გადატვირთვის შემდეგ კი ნორმალურად მუშაობს."},
+    {"en": "Fan noise and overheating", "ka": "ქულერის ხმაური და გადახურება", "d_en": "The fan runs loudly the whole time and the case gets too hot to touch near the vents.", "d_ka": "ქულერი მუდმივად ხმამაღლა მუშაობს და კორპუსი ხვრელებთან ხელის შესახებად ძალიან ცხელდება."},
+    {"en": "Screen flickers randomly", "ka": "ეკრანი პერიოდულად ციმციმებს", "d_en": "The picture flickers for a second or two at random, more often when I move the lid.", "d_ka": "გამოსახულება წამ-ორ წამში უცაბედად ციმციმებს, განსაკუთრებით ხუფის მოძრაობისას."},
+
+    {"en": "Windows is painfully slow", "ka": "Windows ძალიან ნელია", "d_en": "It takes several minutes to boot and every program hangs before it opens.", "d_ka": "ჩატვირთვას რამდენიმე წუთი სჭირდება და ყველა პროგრამა გახსნამდე ჭედავს."},
+    {"en": "Stuck on the update screen", "ka": "განახლების ეკრანზე გაიჭედა", "d_en": "It has been sitting on the same update percentage since last night and will not move.", "d_ka": "გუშინ საღამოდან განახლების ერთსა და იმავე პროცენტზე დგას და აღარ იძვრის."},
+    {"en": "Can't log in after update", "ka": "განახლების შემდეგ ვერ შევდივარ", "d_en": "After the last update my password is rejected, though I am certain it is correct.", "d_ka": "ბოლო განახლების შემდეგ პაროლს არ იღებს, თუმცა დარწმუნებული ვარ, რომ სწორია."},
+    {"en": "Printer driver keeps failing", "ka": "პრინტერის დრაივერი მუდმივად ვარდება", "d_en": "The printer disappears from the list every few days and I have to reinstall the driver.", "d_ka": "პრინტერი ყოველ რამდენიმე დღეში სიიდან ქრება და დრაივერის ხელახლა დაყენება მიწევს."},
+
+    {"en": "Wi-Fi drops every hour", "ka": "Wi-Fi ყოველ საათში წყდება", "d_en": "The connection cuts out for a minute or so roughly once an hour on every device in the flat.", "d_ka": "ბინაში ყველა მოწყობილობაზე კავშირი დაახლოებით საათში ერთხელ წუთით წყდება."},
+    {"en": "Router needs setting up", "ka": "როუტერის კონფიგურაცია მჭირდება", "d_en": "New router straight out of the box - I need it configured with a proper password and guest network.", "d_ka": "ახალი როუტერი ყუთიდან — მჭირდება გამართვა ნორმალური პაროლითა და სასტუმრო ქსელით."},
+    {"en": "No internet in the back room", "ka": "უკანა ოთახში ინტერნეტი არ არის", "d_en": "The signal is fine near the router but there is almost nothing at the back of the flat.", "d_ka": "როუტერთან სიგნალი კარგია, ბინის სიღრმეში კი თითქმის არაფერი აღწევს."},
+    {"en": "VPN won't connect", "ka": "VPN არ უკავშირდება", "d_en": "The work VPN times out every time. It connects fine from my colleague's laptop.", "d_ka": "სამსახურის VPN ყოველ ჯერზე დროის ამოწურვით წყდება. კოლეგის ლეპტოპიდან კი ნორმალურად უკავშირდება."},
+
+    {"en": "Pop-ups everywhere", "ka": "ყველგან ამომხტარი რეკლამებია", "d_en": "Adverts open in new windows even when the browser is closed. Something is clearly installed.", "d_ka": "რეკლამები ახალ ფანჯრებში იხსნება მაშინაც კი, როცა ბრაუზერი დახურულია. აშკარად რაღაცაა დაყენებული."},
+    {"en": "Think I clicked a bad link", "ka": "მგონი საეჭვო ბმულზე დავაჭირე", "d_en": "I opened a link in an email that looked like it came from my bank. Now I am worried.", "d_ka": "ელფოსტაში გავხსენი ბმული, რომელიც თითქოს ბანკიდან იყო. ახლა ვღელავ."},
+    {"en": "Email account was hacked", "ka": "ელფოსტა გატეხეს", "d_en": "Friends are getting messages I never sent and my password no longer works.", "d_ka": "მეგობრებს მისდით წერილები, რომლებიც არ გამომიგზავნია, და პაროლიც აღარ მუშაობს."},
+    {"en": "Ransomware warning", "ka": "გამომძალველი ვირუსის გაფრთხილება", "d_en": "A full-screen message says my files are encrypted and demands payment. I have not paid anything.", "d_ka": "მთელ ეკრანზე წერია, რომ ფაილები დაშიფრულია და გადახდას ითხოვს. არაფერი გადამიხდია."},
+
+    {"en": "Shop page loads forever", "ka": "მაღაზიის გვერდი დიდხანს იტვირთება", "d_en": "The product pages take ten seconds or more, and customers are leaving before they load.", "d_ka": "პროდუქტის გვერდები ათ წამზე მეტს იტვირთება და მომხმარებლები ჩატვირთვამდე მიდიან."},
+    {"en": "Need a landing page built", "ka": "ლენდინგ გვერდის აწყობა მჭირდება", "d_en": "One clean page for a new service, with a contact form and our branding.", "d_ka": "ერთი მოწესრიგებული გვერდი ახალი სერვისისთვის, საკონტაქტო ფორმითა და ჩვენი ბრენდის სტილით."},
+    {"en": "Contact form stopped sending", "ka": "საკონტაქტო ფორმა აღარ აგზავნის", "d_en": "The form says it was sent but nothing arrives in our inbox any more.", "d_ka": "ფორმა წერს, რომ გაიგზავნა, მაგრამ ჩვენს ფოსტაში აღარაფერი შემოდის."},
+    {"en": "Site broken on phones", "ka": "საიტი ტელეფონზე გატეხილია", "d_en": "On mobile the menu overlaps the text and half the buttons cannot be tapped.", "d_ka": "მობილურზე მენიუ ტექსტს ფარავს და ღილაკების ნახევარზე დაჭერა შეუძლებელია."},
+
+    {"en": "API returns 500 at checkout", "ka": "API ყიდვისას 500-ს აბრუნებს", "d_en": "Roughly one order in five fails at the payment step with a server error.", "d_ka": "დაახლოებით ყოველი მეხუთე შეკვეთა გადახდის ეტაპზე სერვერის შეცდომით ვარდება."},
+    {"en": "Database keeps timing out", "ka": "ბაზასთან კავშირი მუდმივად წყდება", "d_en": "Queries that used to be instant now time out under any real load.", "d_ka": "მოთხოვნები, რომლებიც ადრე მყისიერი იყო, ახლა ნებისმიერი დატვირთვისას ვადის ამოწურვით წყდება."},
+    {"en": "Need a payment webhook", "ka": "გადახდის webhook მჭირდება", "d_en": "We need paid orders to be marked automatically instead of checking them by hand.", "d_ka": "გვჭირდება, რომ გადახდილი შეკვეთები ავტომატურად აღინიშნოს, ხელით შემოწმების ნაცვლად."},
+    {"en": "Cron job stopped running", "ka": "Cron დავალება აღარ სრულდება", "d_en": "The nightly export has not produced a file for about a week and there is nothing in the log.", "d_ka": "ღამის ექსპორტს დაახლოებით კვირაა ფაილი არ შეუქმნია და ლოგში არაფერი წერია."},
+
+    {"en": "App crashes on open", "ka": "აპლიკაცია გახსნისთანავე ითიშება", "d_en": "It closes itself within a second of opening, every time, since the last phone update.", "d_ka": "ბოლო განახლების შემდეგ გახსნიდან წამში თავად იხურება, ყოველ ჯერზე."},
+    {"en": "Photos won't sync", "ka": "ფოტოები არ სინქრონიზდება", "d_en": "New pictures stay on the phone and never appear in the cloud or on my laptop.", "d_ka": "ახალი სურათები ტელეფონში რჩება და არც ღრუბელში ჩნდება და არც ლეპტოპზე."},
+    {"en": "Phone storage always full", "ka": "ტელეფონის მეხსიერება მუდამ სავსეა", "d_en": "I delete things constantly and it fills up again within a day.", "d_ka": "მუდმივად ვშლი რაღაცეებს და ერთ დღეში ისევ ივსება."},
+    {"en": "Need help moving to a new phone", "ka": "ახალ ტელეფონზე გადასვლაში მჭირდება დახმარება", "d_en": "I want my contacts, photos and chats moved across without losing anything.", "d_ka": "მინდა კონტაქტები, ფოტოები და მიმოწერა გადმოვიტანო ისე, რომ არაფერი დაიკარგოს."},
+
+    {"en": "Deleted the wrong folder", "ka": "შეცდომით წავშალე საქაღალდე", "d_en": "I emptied the bin before realising a year of work documents was in there.", "d_ka": "ურნა გავასუფთავე და მერე მივხვდი, რომ იქ წლიური სამუშაო დოკუმენტები იყო."},
+    {"en": "External drive not recognised", "ka": "გარე დისკი არ იკითხება", "d_en": "The drive spins up and the light comes on, but it never appears on the computer.", "d_ka": "დისკი ტრიალებს და ინდიკატორიც ანთია, მაგრამ კომპიუტერზე საერთოდ არ ჩნდება."},
+    {"en": "Recover photos from a dead phone", "ka": "ფოტოების აღდგენა მკვდარი ტელეფონიდან", "d_en": "The screen is black and it will not charge. The photos were never backed up.", "d_ka": "ეკრანი შავია და არ იტენება. ფოტოების სარეზერვო ასლი არასდროს გამიკეთებია."},
+    {"en": "Spreadsheet is corrupted", "ka": "ცხრილის ფაილი დაზიანდა", "d_en": "Excel refuses to open our main accounts file and offers to repair it, then fails.", "d_ka": "Excel ჩვენს მთავარ საბუღალტრო ფაილს არ ხსნის, აღდგენას გვთავაზობს და მერე ვერ ახერხებს."},
+
+    {"en": "Smart TV won't cast", "ka": "Smart TV-ზე ტრანსლაცია არ მუშაობს", "d_en": "The TV and the phone are on the same Wi-Fi but casting never finds the screen.", "d_ka": "ტელევიზორი და ტელეფონი ერთსა და იმავე Wi-Fi-ზეა, მაგრამ ტრანსლაცია ეკრანს ვერ პოულობს."},
+    {"en": "Set up a home office", "ka": "სახლის ოფისის მოწყობა", "d_en": "A desk, two monitors, a printer and stable Wi-Fi - I would like it all set up properly.", "d_ka": "მაგიდა, ორი მონიტორი, პრინტერი და სტაბილური Wi-Fi — მინდა ყველაფერი გამართულად დაიდგას."},
+    {"en": "Scanner won't talk to the Mac", "ka": "სკანერი Mac-ს არ უკავშირდება", "d_en": "It worked before the last macOS update and now it is not detected at all.", "d_ka": "macOS-ის ბოლო განახლებამდე მუშაობდა, ახლა კი საერთოდ არ აღმოაჩენს."},
+    {"en": "Need a general tech health check", "ka": "ტექნიკის ზოგადი შემოწმება მჭირდება", "d_en": "Nothing is broken exactly, I would just like someone to look over everything and tidy it up.", "d_ka": "კონკრეტულად არაფერია გაფუჭებული, უბრალოდ მინდა ვინმემ ყველაფერი გადახედოს და მოაწესრიგოს."}
+  ],
+  "comments": {
+    "high": [
+      {"en": "Fast and friendly, explained everything clearly.", "ka": "სწრაფი და თავაზიანი, ყველაფერი გასაგებად ამიხსნა."},
+      {"en": "Fixed in under an hour. Brilliant.", "ka": "საათზე ნაკლებში მოაგვარა. შესანიშნავია."},
+      {"en": "Very patient with someone who is not technical at all.", "ka": "ძალიან მომთმენი იყო ადამიანთან, ვინც ტექნიკაში საერთოდ ვერ ერკვევა."},
+      {"en": "Sorted it remotely, no fuss.", "ka": "დისტანციურად მოაგვარა, ყოველგვარი პრობლემის გარეშე."},
+      {"en": "Knew exactly what the problem was.", "ka": "ზუსტად იცოდა, რაში იყო პრობლემა."},
+      {"en": "Polite and thorough. Would use again.", "ka": "თავაზიანი და საფუძვლიანი. კიდევ მივმართავ."}
+    ],
+    "mid": [
+      {"en": "Good work, though it took longer than I expected.", "ka": "კარგი სამუშაოა, თუმცა მოლოდინზე მეტი დრო დასჭირდა."},
+      {"en": "Problem is solved, but it took a couple of visits.", "ka": "პრობლემა მოგვარდა, თუმცა ორი ვიზიტი დასჭირდა."},
+      {"en": "Fine in the end. Communication could have been better.", "ka": "საბოლოოდ კარგად დასრულდა. კომუნიკაცია შეიძლებოდა უკეთესი ყოფილიყო."}
+    ],
+    "low": [
+      {"en": "Turned up late and the problem came back the next day.", "ka": "დაგვიანებით მოვიდა და პრობლემა მეორე დღეს დაუბრუნდა."},
+      {"en": "Not really what I asked for, had to call someone else.", "ka": "სულ სხვა რამ გამიკეთა, სხვისთვის მომიწია მიმართვა."}
+    ]
+  }
+}
