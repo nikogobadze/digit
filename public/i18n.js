@@ -95,6 +95,7 @@ const I18N_KA = {
   'problems solved': 'მოგვარებული პრობლემა',
   'average rating': 'საშუალო შეფასება',
   'median first reply': 'პასუხის მედიანური დრო',
+  'specialists ready': 'მზად მყოფი სპეციალისტი',
   'Trusted by people who\'d rather not call "their tech cousin" again.':
     'ენდობიან ადამიანები, რომლებსაც აღარ სურთ „ტექნიკის მცოდნე ბიძაშვილს“ დარეკვა.',
   'Avg. reply in 12 min': 'პასუხი საშუალოდ 12 წუთში',

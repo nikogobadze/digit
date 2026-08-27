@@ -202,6 +202,25 @@ app.get('/api/categories', (req, res) => {
 /* Everything below talks to the DB: ensure the schema/seed exist (cold start). */
 app.use('/api', ah(async (req, res, next) => { await ready(); next(); }));
 
+/* Landing page headline figures. Public, identical for everyone, and small, so
+   it gets the same edge cache treatment as the categories. It exists so the
+   hero can state real numbers: the figures there were invented copy, which is
+   not something to leave on a live page. */
+app.get('/api/stats', ah(async (req, res) => {
+  const [r] = await all(`SELECT
+    (SELECT COUNT(*) FROM tasks WHERE completed_at IS NOT NULL) AS solved,
+    (SELECT COUNT(*) FROM users WHERE role = 'fixer' AND employment_status = 'active') AS specialists,
+    (SELECT COUNT(*) FROM tasks WHERE rating IS NOT NULL) AS ratings,
+    (SELECT AVG(rating) FROM tasks WHERE rating IS NOT NULL) AS avg_rating`);
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+  res.json({
+    solved: Number(r.solved) || 0,
+    specialists: Number(r.specialists) || 0,
+    ratings: Number(r.ratings) || 0,
+    avgRating: r.avg_rating === null ? null : Math.round(Number(r.avg_rating) * 10) / 10,
+  });
+}));
+
 /* Public, identical for everyone, and now fetched by the landing page on every
    visit as well as by the reviews page — so it is worth an edge cache and a
    bound on the row count. The summary is computed in SQL over ALL ratings, not

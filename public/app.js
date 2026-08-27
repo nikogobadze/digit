@@ -82,6 +82,27 @@ function armReveal() {
 }
 
 
+/* The hero's headline figures, from real data. The row stays hidden if the
+   numbers cannot be fetched -- an empty stat row reads as broken, and inventing
+   the numbers is what this replaced. */
+async function loadLandingStats() {
+  const row = $('#lp-trust');
+  if (!row) return;
+  try {
+    const s = await apiCached('/api/stats');
+    if (!s || !s.solved) return;                    // nothing worth boasting about yet
+    $('#lp-solved').textContent = s.solved.toLocaleString();
+    $('#lp-specialists').textContent = s.specialists.toLocaleString();
+    const rating = $('#lp-rating');
+    if (s.avgRating) {
+      rating.textContent = s.avgRating.toFixed(1) + '★';
+    } else {
+      rating.closest('div').remove();               // no ratings yet: drop the column
+    }
+    row.hidden = false;
+  } catch { /* leave it hidden */ }
+}
+
 /* Three real reviews on the landing. Silent if there are none yet -- an empty
    testimonial row is worse than no row, so the whole section is removed. */
 async function loadLandingReviews() {
@@ -380,6 +401,7 @@ async function loadCategories() {
     `<span class="chip" data-skill="${c.key}">${c.emoji} ${esc(c.label)}</span>`).join('');
   armReveal();
   loadLandingReviews();
+  loadLandingStats();
 }
 
 /* home "Common Problems" card → open the post form (problems no longer have a category) */

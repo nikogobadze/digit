@@ -52,6 +52,9 @@
 .lp-cta{display:flex;gap:.85rem;flex-wrap:wrap;margin-top:2.1rem}
 
 .lp-trust{display:flex;gap:2.2rem;flex-wrap:wrap;margin-top:2.6rem;padding-top:1.7rem;border-top:1px solid var(--lp-line)}
+/* display:flex above beats the hidden attribute's UA display:none, so the
+   row would show its em-dash placeholders before the figures arrive. */
+.lp-trust[hidden]{display:none}
 .lp-trust .n{display:block;font-family:'Bricolage Grotesque','Noto Sans Georgian',sans-serif;
   font-weight:800;font-size:1.55rem;color:var(--lp-ink);line-height:1}
 .lp-trust .l{display:block;font-size:.85rem;color:var(--lp-muted);margin-top:.35rem}

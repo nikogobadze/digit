@@ -1190,10 +1190,13 @@
           </button>
           <button class="btn btn-ghost btn-lg" data-go="registerFixer">Work with us</button>
         </div>
-        <div class="lp-trust">
-          <div><span class="n">2,400+</span><span class="l">problems solved</span></div>
-          <div><span class="n">4.9★</span><span class="l">average rating</span></div>
-          <div><span class="n">12 min</span><span class="l">median first reply</span></div>
+        <!-- Filled from /api/stats. Hidden until it loads: these are real
+             figures, so there is nothing sensible to show before they arrive
+             and a placeholder would only be invented copy again. -->
+        <div class="lp-trust" id="lp-trust" hidden>
+          <div><span class="n" id="lp-solved">—</span><span class="l">problems solved</span></div>
+          <div><span class="n" id="lp-rating">—</span><span class="l">average rating</span></div>
+          <div><span class="n" id="lp-specialists">—</span><span class="l">specialists ready</span></div>
         </div>
       </div>
 
