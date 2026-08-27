@@ -89,7 +89,14 @@ async function loadLandingReviews() {
   if (!host) return;
   try {
     const { reviews } = await apiCached('/api/reviews');
-    const top = (reviews || []).filter(r => r.comment && r.rating >= 4).slice(0, 3);
+    // The seeded comments come from a small pool, so the three most recent
+    // high ratings were often the same sentence two or three times over.
+    // De-duplicate on the comment before taking three.
+    const seen = new Set();
+    const top = (reviews || [])
+      .filter(r => r.comment && r.rating >= 4)
+      .filter(r => { const k = r.comment.trim(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .slice(0, 3);
     if (!top.length) { const sec = $('#lp-reviews-sec'); if (sec) sec.remove(); return; }
     host.innerHTML = top.map(r => `<div class="lp-review fx-in">
       <div class="stars">${'★'.repeat(r.rating)}</div>

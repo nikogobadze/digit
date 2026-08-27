@@ -659,8 +659,12 @@
   @media(max-width:600px){.avail-set{align-items:flex-start;margin-top:.8rem}}
 
   /* toast */
-  #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(150%);background:#0B0B45;color:#fff;padding:.8rem 1.3rem;border-radius:var(--r-pill);font-weight:600;font-size:.92rem;box-shadow:var(--shadow-lg);z-index:200;transition:transform .35s cubic-bezier(.2,1.2,.3,1);max-width:90vw}
-  #toast.show{transform:translateX(-50%) translateY(0)}
+  /* Hidden by opacity/visibility as well as the slide. The slide alone was
+     translateY(150%) of the element's OWN height, and an empty toast is only
+     26px tall, so 150% (39px) never cleared bottom:1.4rem — about 10px of a
+     dark pill sat at the bottom of every page until the first message. */
+  #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(150%);background:#0B0B45;color:#fff;padding:.8rem 1.3rem;border-radius:var(--r-pill);font-weight:600;font-size:.92rem;box-shadow:var(--shadow-lg);z-index:200;transition:transform .35s cubic-bezier(.2,1.2,.3,1),opacity .25s ease,visibility .35s;max-width:90vw;opacity:0;visibility:hidden;pointer-events:none}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible}
   #toast.bad{background:var(--bad)}
 
   /* footer */
