@@ -1,0 +1,119 @@
+/* ==================================================================
+   fx.css — the futuristic / IT layer.
+
+   Brief: bruno-simon.com for motion and depth, Porsche for restraint, Aramco for
+   scroll-driven storytelling; more "IT and programming"; effects on buttons;
+   keep the existing deep-violet brand colour; Georgian is the primary market.
+
+   The brand ink (--violet #0B0B45) is untouched. What is added is a neon accent
+   pair used only for glow and edges, never for text, so contrast is unaffected.
+
+   Everything animates transform/opacity/filter only, so nothing re-lays-out, and
+   the whole file stands down under prefers-reduced-motion.
+================================================================== */
+
+:root{
+  --neon:#6E6EF5;            /* violet glow, same family as the brand */
+  --neon-2:#39D8E8;          /* cyan edge, used sparingly for "signal" */
+  --grid-line:rgba(130,130,255,.13);
+  --fx-ease:cubic-bezier(.22,.8,.3,1);
+}
+
+/* ---------- circuit grid, used behind dark sections ---------- */
+.fx-grid{position:relative;isolation:isolate}
+.fx-grid::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+  background-size:54px 54px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 35%,transparent 78%);
+  mask-image:radial-gradient(120% 90% at 50% 0%,#000 35%,transparent 78%);
+}
+
+/* ---------- buttons: sheen sweep + lift + glow ----------
+   One rule set for every button in the app, so the dashboards inherit the same
+   behaviour as the landing without touching their markup. */
+.btn{position:relative;overflow:hidden;isolation:isolate;
+  transition:transform .18s var(--fx-ease),box-shadow .18s var(--fx-ease),background .18s var(--fx-ease),border-color .18s var(--fx-ease)}
+.btn::after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.42) 50%,transparent 62%);
+  transform:translateX(-120%);
+}
+.btn:hover::after{transform:translateX(120%);transition:transform .62s var(--fx-ease)}
+.btn:active{transform:translateY(1px) scale(.995)}
+.btn-primary:hover{box-shadow:0 10px 30px rgba(11,11,69,.42),0 0 0 1px rgba(110,110,245,.5),0 0 22px rgba(110,110,245,.35)}
+.hero .btn-primary:hover{box-shadow:0 14px 38px rgba(0,0,0,.5),0 0 26px rgba(255,255,255,.28)}
+.hero .btn-ghost:hover{box-shadow:0 10px 30px rgba(0,0,0,.4),0 0 0 1px rgba(110,110,245,.55),0 0 20px rgba(110,110,245,.3)}
+
+/* Keyboard users get the glow too, and a visible ring. */
+.btn:focus-visible,.cat:focus-visible,.tab:focus-visible,.lang-btn:focus-visible{
+  outline:2px solid var(--neon);outline-offset:2px}
+
+/* ---------- category tiles: edge light on hover ---------- */
+.cat{position:relative;overflow:hidden}
+.cat::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(120deg,rgba(110,110,245,.16),transparent 42%);
+  opacity:0;transition:opacity .22s var(--fx-ease)}
+.cat:hover::before{opacity:1}
+.cat:hover{border-color:rgba(110,110,245,.5);box-shadow:0 12px 30px rgba(11,11,69,.12)}
+
+/* ---------- the terminal that opens the landing ----------
+   The single most on-theme way to say "this is for tech problems": the visitor
+   watches a real problem get typed, routed and fixed before reading a word. */
+.term{
+  position:relative;border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,#0E0E3A 0%,#08082A 100%);
+  border:1px solid rgba(140,140,255,.22);
+  box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 1px rgba(110,110,245,.14),inset 0 1px 0 rgba(255,255,255,.06);
+  font-family:'Space Mono','Noto Sans Georgian',ui-monospace,monospace;
+}
+.term-bar{display:flex;align-items:center;gap:.45rem;padding:.62rem .85rem;
+  background:rgba(255,255,255,.045);border-bottom:1px solid rgba(140,140,255,.16)}
+.term-bar .tdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tdot.r{background:#FF5F57}.tdot.y{background:#FEBC2E}.tdot.g{background:#28C840}
+.term-title{margin-left:.5rem;font-size:.72rem;color:#8E8ECB;letter-spacing:.04em}
+.term-body{padding:1rem 1.05rem 1.15rem;font-size:.84rem;line-height:1.75;min-height:188px}
+.term-line{color:#DCDCF5;word-break:break-word}
+.term-prompt{color:var(--neon-2);margin-right:.45rem}
+.term-caret{display:inline-block;width:8px;height:1.05em;vertical-align:-2px;margin-left:2px;
+  background:var(--neon-2);animation:termBlink 1.05s steps(1) infinite}
+@keyframes termBlink{50%{opacity:0}}
+.term-out{opacity:0;transform:translateY(6px);color:#9C9CD8;transition:opacity .4s var(--fx-ease),transform .4s var(--fx-ease)}
+.term-out.show{opacity:1;transform:none}
+.term-out .arrow{color:var(--neon);margin-right:.4rem}
+.term-out.ok{color:#5FE0A8}
+.term-out.ok .arrow{color:#5FE0A8}
+/* A slow scan line, the one purely decorative touch. */
+.term::after{content:"";position:absolute;left:0;right:0;height:120px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(110,110,245,.10),transparent);
+  animation:termScan 7s linear infinite}
+@keyframes termScan{0%{top:-120px}100%{top:100%}}
+
+/* ---------- floating isometric shapes ---------- */
+/* Positioned OUTSIDE the terminal's footprint, with overflow visible, so they
+   read as shapes floating around it. Inside the box they simply hid behind the
+   panel and showed as a sliver at its edge. */
+.fx-shapes{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:visible}
+.fx-shape{position:absolute;opacity:.55;will-change:transform}
+.fx-shape.s1{top:-13%;left:-15%;width:96px;animation:fxDrift 13s ease-in-out infinite}
+.fx-shape.s2{bottom:-10%;left:-9%;width:62px;animation:fxDrift 17s ease-in-out infinite reverse}
+.fx-shape.s3{top:-16%;right:-7%;width:70px;animation:fxDrift 15s ease-in-out infinite 1.5s}
+@media(max-width:880px){ .fx-shape.s1{left:-6%;top:-9%} .fx-shape.s2{left:-4%} .fx-shape.s3{right:-2%} }
+@keyframes fxDrift{
+  0%,100%{transform:translate3d(0,0,0) rotate(0deg)}
+  50%{transform:translate3d(0,-22px,0) rotate(8deg)}
+}
+
+/* ---------- section entrance, used across the site ---------- */
+.fx-in{opacity:0;transform:translateY(20px);
+  transition:opacity .6s var(--fx-ease),transform .6s var(--fx-ease)}
+.fx-in.in{opacity:1;transform:none}
+
+@media(prefers-reduced-motion:reduce){
+  .btn::after,.term::after,.term-caret,.fx-shape{animation:none!important;transition:none!important}
+  .btn:hover::after{transform:translateX(-120%)}
+  .term-out{opacity:1;transform:none}
+  .fx-in{opacity:1;transform:none;transition:none}
+}

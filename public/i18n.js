@@ -98,6 +98,14 @@ const I18N_KA = {
   'Avg. reply in 12 min': 'პასუხი საშუალოდ 12 წუთში',
   'Verified workers only': 'მხოლოდ დადასტურებული სპეციალისტები',
   'Post your problem': 'გამოაგზავნეთ პრობლემა',
+
+  /* Landing terminal. The typed phrase is read from the DOM at run time, so the
+     translator rewrites it before fx.js starts typing. */
+  'My laptop shows a blue screen every morning.': 'ლეპტოპი ყოველ დილით ლურჯ ეკრანს აჩვენებს.',
+  'Sent to a manager': 'გაიგზავნა მენეჯერთან',
+  'Price agreed · no jargon': 'ფასი შეთანხმდა · ჟარგონის გარეშე',
+  'Fixed by a real specialist': 'მოაგვარა რეალურმა სპეციალისტმა',
+  'digit — help': 'digit — დახმარება',
   '3 clicks': '3 დაწკაპუნება',
   '"My laptop shows a blue screen every time I open it…"':
     '„ლეპტოპი ყოველ ჩართვაზე ლურჯ ეკრანს აჩვენებს…“',
@@ -804,7 +812,7 @@ const I18N = (() => {
     return out == null ? s : out;
   }
 
-  const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
+  const ATTRS = ['placeholder', 'aria-label', 'title', 'alt', 'data-phrase'];
 
   function applyTo(root) {
     if (!root) return;
@@ -829,7 +837,7 @@ const I18N = (() => {
     }
     // Attributes
     const els = root.nodeType === Node.ELEMENT_NODE
-      ? [root, ...root.querySelectorAll('[placeholder],[aria-label],[title],[alt]')]
+      ? [root, ...root.querySelectorAll('[placeholder],[aria-label],[title],[alt],[data-phrase]')]
       : [];
     for (const el of els) {
       if (!el.getAttribute) continue;
@@ -895,6 +903,8 @@ const I18N = (() => {
     syncToggle();
     // Anything already rendered with a locale-formatted date needs rebuilding.
     if (rerender && typeof window.__i18nRerender === 'function') window.__i18nRerender();
+    // The terminal types a translated phrase, so it has to start over.
+    if (typeof window.__armFx === 'function') window.__armFx();
   }
 
   function syncToggle() {
