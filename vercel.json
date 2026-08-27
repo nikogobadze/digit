@@ -24,10 +24,17 @@
       "dest": "/server.js"
     },
     {
-      "src": "/((?!api/).+\\.(js|css|png|jpe?g|svg|ico|webp|gif|woff2?|map|txt))",
+      "src": "/((?!api/).+\\.(js|css|map))",
       "dest": "/public/$1",
       "headers": {
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=604800"
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "src": "/((?!api/).+\\.(png|jpe?g|svg|ico|webp|gif|woff2?|txt))",
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800"
       }
     },
     {
