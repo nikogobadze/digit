@@ -978,6 +978,29 @@
     .hiw-step:hover .hiw-art svg g[transform^="translate(60,50)"]{animation:none}
   }
 
+  /* ---------- depth: parallax + pointer tilt ----------
+     Driven by depth.js, which only ever sets these two custom properties. Doing
+     it through variables keeps the transform in CSS, so the reveal animation and
+     the tilt compose instead of overwriting each other. */
+  .hero-art{--pY:0px;--rx:0deg;--ry:0deg;perspective:1100px}
+  .hero-art .scene{transform:translate3d(0,var(--pY),0) rotateX(var(--rx)) rotateY(var(--ry));
+    transform-style:preserve-3d;transition:transform .32s cubic-bezier(.22,.8,.3,1);will-change:transform}
+  .hiw-step{--rx:0deg;--ry:0deg;perspective:800px}
+  .hiw-step.in .hiw-art{transform:rotateX(var(--rx)) rotateY(var(--ry));
+    transform-style:preserve-3d;transition:transform .3s cubic-bezier(.22,.8,.3,1)}
+
+  /* Porsche-side of the brief: let each section have room to exist on its own,
+     and let the headline carry it rather than a paragraph under it. */
+  .section{padding:6.5rem 0}
+  .sec-head{margin-bottom:3.6rem}
+  .sec-head h2{font-size:clamp(2rem,4vw,3rem);letter-spacing:-.02em}
+  html[data-lang="ka"] .sec-head h2{letter-spacing:0;line-height:1.3}
+
+  @media(max-width:880px){ .section{padding:4.25rem 0} .sec-head{margin-bottom:2.4rem} }
+  @media(prefers-reduced-motion:reduce){
+    .hero-art .scene,.hiw-step.in .hiw-art{transform:none;transition:none}
+  }
+
   /* ---------- language switch ---------- */
   /* A segmented capsule. The track is a soft inset well and the active segment a
      raised pill, so which side is live reads at a glance rather than from colour
@@ -1175,7 +1198,7 @@
       </div>
 
       <!-- The explanation IS the picture: broken thing, real person, fixed thing. -->
-      <div class="hero-art" aria-hidden="true">
+      <div class="hero-art" aria-hidden="true" data-depth="26">
         <svg class="scene" viewBox="0 0 460 290" role="img">
 
           <g class="sc-card sc-a">
@@ -1664,6 +1687,7 @@
 <!-- charts.js and analytics.js declare functions only; app.js calls into them -->
 <!-- i18n first: it installs the DOM observer before app.js renders anything. -->
 <script src="/cat-icons.js"></script>
+<script src="/depth.js"></script>
 <script src="/i18n.js"></script>
 <script src="/charts.js"></script>
 <script src="/analytics.js"></script>

@@ -77,6 +77,7 @@ function armReveal() {
     revealHooked = true;
   }
   revealSweep();
+  if (typeof window.__armDepth === 'function') window.__armDepth();
 }
 
 /* ---------- tiny helpers ---------- */
