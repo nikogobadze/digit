@@ -44,10 +44,14 @@
 .lp-eyebrow .d{width:7px;height:7px;border-radius:50%;background:var(--lp-teal)}
 
 .lp-h1{font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.14;letter-spacing:-.02em;color:var(--lp-ink);font-weight:800}
+/* The highlight has to be visible to be a highlight. --lp-accent-soft (#FFF2E3)
+   on a white hero was almost invisible, and .hl in --violet (#0B0B45) is
+   indistinguishable from the ink (#14143A) at heading weight, so the phrase it
+   marks did not read as marked at all. */
 .lp-h1 .hl{color:var(--violet);position:relative;white-space:nowrap}
 .lp-h1 .hl::after{                      /* hand-drawn underline under the key phrase */
-  content:"";position:absolute;left:0;right:0;bottom:-.12em;height:.34em;z-index:-1;
-  background:var(--lp-accent-soft);border-radius:.2em}
+  content:"";position:absolute;left:-.06em;right:-.06em;bottom:-.02em;height:.32em;z-index:-1;
+  background:rgba(240,145,58,.38);border-radius:.18em}
 .lp-sub{color:var(--lp-muted);font-size:clamp(1rem,1.4vw,1.16rem);line-height:1.7;margin-top:1.4rem;max-width:44ch}
 .lp-cta{display:flex;gap:.85rem;flex-wrap:wrap;margin-top:2.1rem}
 
@@ -74,6 +78,7 @@
 .lp-head h2{font-size:clamp(1.7rem,3.2vw,2.5rem);line-height:1.22;letter-spacing:-.015em;color:var(--lp-ink)}
 .lp-head p{color:var(--lp-muted);margin-top:.85rem;font-size:1.03rem;line-height:1.7}
 html[data-lang="ka"] .lp-h1{line-height:1.28;letter-spacing:0}
+html[data-lang="ka"] .lp-h1 .hl::after{bottom:.02em;height:.28em}
 html[data-lang="ka"] .lp-head h2{line-height:1.32;letter-spacing:0}
 
 /* ---------------- category grid: the centrepiece ---------------- */
