@@ -108,7 +108,9 @@ html[data-lang="ka"] .lp-head h2{line-height:1.32;letter-spacing:0}
 .lp-step p{color:var(--lp-muted);font-size:.96rem;line-height:1.65}
 
 /* ---------------- reviews ---------------- */
-.lp-reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem}
+/* auto-fit rather than a fixed three: with two reviews a repeat(3,1fr) grid
+   leaves a visibly empty third column. */
+.lp-reviews{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem}
 .lp-review{background:#fff;border:1px solid var(--lp-line);border-radius:18px;padding:1.5rem 1.6rem;
   display:flex;flex-direction:column;gap:.85rem}
 .lp-review .stars{color:#F5B301;font-size:.95rem;letter-spacing:.06em}

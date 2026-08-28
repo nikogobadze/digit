@@ -85,12 +85,17 @@ function armReveal() {
 /* The hero's headline figures, from real data. The row stays hidden if the
    numbers cannot be fetched -- an empty stat row reads as broken, and inventing
    the numbers is what this replaced. */
+const MIN_SOLVED_TO_BOAST = 5;
+const MIN_REVIEWS_TO_SHOW = 2;
+
 async function loadLandingStats() {
   const row = $('#lp-trust');
   if (!row) return;
   try {
     const s = await apiCached('/api/stats');
-    if (!s || !s.solved) return;                    // nothing worth boasting about yet
+    // "1 problem solved" is weaker than saying nothing at all, so the row waits
+    // until the numbers actually support the claim they are making.
+    if (!s || s.solved < MIN_SOLVED_TO_BOAST) return;
     $('#lp-solved').textContent = s.solved.toLocaleString();
     $('#lp-specialists').textContent = s.specialists.toLocaleString();
     const rating = $('#lp-rating');
@@ -118,7 +123,8 @@ async function loadLandingReviews() {
       .filter(r => r.comment && r.rating >= 4)
       .filter(r => { const k = r.comment.trim(); if (seen.has(k)) return false; seen.add(k); return true; })
       .slice(0, 3);
-    if (!top.length) { const sec = $('#lp-reviews-sec'); if (sec) sec.remove(); return; }
+    // One lone testimonial in a row built for three reads as missing content.
+    if (top.length < MIN_REVIEWS_TO_SHOW) { const sec = $('#lp-reviews-sec'); if (sec) sec.remove(); return; }
     host.innerHTML = top.map(r => `<div class="lp-review fx-in">
       <div class="stars">${'★'.repeat(r.rating)}</div>
       <p>${esc(r.comment)}</p>
